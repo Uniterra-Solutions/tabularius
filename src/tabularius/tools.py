@@ -69,6 +69,15 @@ def _err(message: str) -> str:
     return json.dumps({"ok": False, "error": message}, ensure_ascii=False)
 
 
+def _read_document(path: str) -> str:
+    """Read a memory document, raising ToolError on unsafe/missing paths."""
+    result = json.loads(memory_read(path))
+    if not result.get("ok"):
+        raise ToolError(str(result.get("error") or f"read failed: {path}"))
+    content: str = result["content"]
+    return content
+
+
 # ── Tools ────────────────────────────────────────────────────────────────────
 
 

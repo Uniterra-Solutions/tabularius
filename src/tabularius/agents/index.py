@@ -24,9 +24,9 @@ from tabularius.schemas import IndexAgentOutput, IndexEntry, ReaderAgentOutput
 from tabularius.tools import (
     INDEX_FILE,
     ToolError,
+    _read_document,
     index_update,
     memory_dir,
-    memory_read,
     memory_write,
 )
 
@@ -122,10 +122,7 @@ def _strip_related(content: str) -> str:
 
 def _write_related_block(path: str, related: list[str]) -> None:
     """Append/replace the ``## Related`` block of one document (atomic)."""
-    read_result = json.loads(memory_read(path))
-    if not read_result.get("ok"):
-        raise ToolError(str(read_result.get("error") or f"read failed: {path}"))
-    content = _strip_related(read_result["content"])
+    content = _strip_related(_read_document(path))
     block = f"{content.rstrip()}\n\n## Related\n" + "".join(f"- {rel}\n" for rel in related)
     write_result = json.loads(memory_write(path, block, "merge"))
     if not write_result.get("ok"):

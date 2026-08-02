@@ -61,8 +61,8 @@ class TestRunRecallAgent:
 
         out = recall.run_recall_agent(
             "q",
-            client=_TimeoutClient(),
-            timeout=recall.RECALL_TIMEOUT,  # type: ignore[arg-type]
+            client=_TimeoutClient(),  # type: ignore[arg-type]
+            timeout=recall.RECALL_TIMEOUT,
         )
         assert out.context_block == ""
         assert out.documents_used == []
