@@ -92,6 +92,11 @@ class TestJsonSystemPrompt:
         llm.LLMClient._with_json_system_prompt(messages)
         assert messages == [{"role": "system", "content": "Be helpful."}]
 
+    def test_none_system_content_does_not_raise(self) -> None:
+        # content=None must be treated as empty, not crash the suffix append.
+        out = llm.LLMClient._with_json_system_prompt([{"role": "system", "content": None}])
+        assert llm.JSON_OUTPUT_SUFFIX in out[0]["content"]
+
 
 class TestChatRetry:
     def test_retries_on_429_then_succeeds(self, monkeypatch: pytest.MonkeyPatch) -> None:

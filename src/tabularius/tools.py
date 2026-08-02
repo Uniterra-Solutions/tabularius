@@ -45,7 +45,10 @@ def memory_dir() -> Path:
 def _resolve_path(name: str) -> Path:
     """Resolve a memory-relative path, rejecting traversal outside the root."""
     root = memory_dir().resolve()
-    candidate = (root / name).resolve()
+    try:
+        candidate = (root / name).resolve()
+    except (OSError, ValueError) as exc:  # e.g. NUL byte, symlink loop
+        raise ToolError(f"unresolvable path: {name!r} ({exc})") from exc
     if not candidate.is_relative_to(root):
         raise ToolError(f"path escapes memory directory: {name}")
     return candidate
@@ -109,7 +112,10 @@ def memory_write(path: str, content: str, action: str) -> str:
         return _err(f"refusing to overwrite existing file: {path} (use action='merge')")
     if action == "merge" and not exists:
         return _err(f"file does not exist: {path} (use action='create')")
-    _atomic_write(target, content)
+    try:
+        _atomic_write(target, content)
+    except OSError as exc:  # e.g. target is a dir, parent is a file, disk full
+        return _err(f"write failed: {path}: {exc}")
     return _ok(path=path, action=action)
 
 

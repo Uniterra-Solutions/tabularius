@@ -107,7 +107,7 @@ class LLMClient:
             out = [{"role": "system", "content": ""}]
         if out[0].get("role") != "system":
             out.insert(0, {"role": "system", "content": ""})
-        content = out[0].get("content", "")
+        content = out[0].get("content") or ""
         if JSON_OUTPUT_SUFFIX not in content:
             out[0]["content"] = f"{content}\n\n{JSON_OUTPUT_SUFFIX}"
         return out

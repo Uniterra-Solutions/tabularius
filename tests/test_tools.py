@@ -41,6 +41,14 @@ class TestMemoryRead:
         result = _parse(tools.memory_read("/etc/passwd"))
         assert result["ok"] is False
 
+    def test_nul_byte_path_returns_error_json(self, memory_root) -> None:
+        # A NUL byte makes pathlib.resolve() raise ValueError; the tool must
+        # translate that into error JSON instead of propagating the exception.
+        result = _parse(tools.memory_read("a\x00b.md"))
+        assert result["ok"] is False
+        result = _parse(tools.memory_write("a\x00b.md", "x", "create"))
+        assert result["ok"] is False
+
 
 class TestMemoryWrite:
     def test_create_new_file(self, memory_root) -> None:
@@ -87,6 +95,18 @@ class TestMemoryWrite:
 
     def test_write_rejects_traversal(self, memory_root) -> None:
         result = _parse(tools.memory_write("../evil.md", "x", "create"))
+        assert result["ok"] is False
+
+    def test_write_to_existing_directory_returns_error_json(self, memory_root) -> None:
+        # Tools must return error JSON, never raise (contract: JSON strings only).
+        (memory_root / "subdir").mkdir()
+        result = _parse(tools.memory_write("subdir", "x", "create"))
+        assert result["ok"] is False
+        assert "write failed" in result["error"]
+
+    def test_write_when_parent_is_file_returns_error_json(self, memory_root) -> None:
+        (memory_root / "afile.md").write_text("x", encoding="utf-8")
+        result = _parse(tools.memory_write("afile.md/child.md", "x", "create"))
         assert result["ok"] is False
 
 

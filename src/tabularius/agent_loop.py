@@ -65,6 +65,8 @@ def run_agent(
 
     for _ in range(max_tool_rounds + 1):
         response = llm.chat(messages, tools=tools, timeout=timeout)
+        if not response.choices:
+            raise RuntimeError("llm returned a response with no choices")
         message = response.choices[0].message
 
         if message.tool_calls:

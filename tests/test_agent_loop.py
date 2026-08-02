@@ -204,6 +204,22 @@ class TestRunAgent:
         assert tool_result["ok"] is False
         assert "disk full" in tool_result["error"]
 
+    def test_empty_choices_raises_clear_error(self) -> None:
+        # Some relays return HTTP 200 with choices=[] on failure; the loop must
+        # raise a clear RuntimeError, not a bare IndexError.
+        class _NoChoices:
+            choices: list = []
+
+        client = _ScriptedClient([_NoChoices()])  # type: ignore[list-item]
+        with pytest.raises(RuntimeError, match="no choices"):
+            agent_loop.run_agent(
+                "system",
+                "user",
+                [],
+                ReaderAgentOutput,
+                client=client,  # type: ignore[arg-type]
+            )
+
     def test_tool_round_limit_raises(self) -> None:
         responses = [
             _FakeResponse(_FakeMessage(tool_calls=[_tool_call("memory_read", {"path": "a.md"})]))
