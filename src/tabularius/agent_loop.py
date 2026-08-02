@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from tabularius.llm import LLMClient
 from tabularius.schemas import SchemaParseError, parse_or_retry
+from tabularius.tools import TOOL_REGISTRY
 
 MAX_SCHEMA_RETRIES = 2
 MAX_TOOL_ROUNDS = 25
@@ -24,8 +25,6 @@ DispatchFn = Callable[[str, dict[str, Any]], str]
 
 def _default_dispatch(name: str, args: dict[str, Any]) -> str:
     """Look up a tool in the registry and call it, returning its JSON result."""
-    from tabularius.tools import TOOL_REGISTRY  # lazy: avoid import cycle at module load
-
     tool = TOOL_REGISTRY.get(name)
     if tool is None:
         return json.dumps({"ok": False, "error": f"unknown tool: {name}"})
@@ -68,7 +67,7 @@ def run_agent(
         response = llm.chat(messages, tools=tools, timeout=timeout)
         message = response.choices[0].message
 
-        if getattr(message, "tool_calls", None):
+        if message.tool_calls:
             # OpenAI rule: echo the assistant's tool_call message before
             # the tool results, with matching tool_call_id.
             messages.append(message.model_dump(exclude_none=True))

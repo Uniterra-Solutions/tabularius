@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 from fabricium.state import _get_global_hermes_home
 
+from tabularius.llm import LLMClient
 from tabularius.schemas import IndexEntry, ReaderAgentOutput
 
 MEMORY_DIR_NAME = "memory"
@@ -143,7 +144,7 @@ def index_update(entries: list[dict[str, Any]]) -> str:
     return _ok(count=len(validated))
 
 
-def spawn_reader(path: str, *, client: Any = None) -> str:
+def spawn_reader(path: str, *, client: LLMClient | None = None) -> str:
     """Spawn a reader agent for a single memory document.
 
     Returns ``ReaderAgentOutput`` JSON (summary + key_topics +

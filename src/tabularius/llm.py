@@ -95,13 +95,9 @@ class LLMClient:
     @staticmethod
     def _is_transient(exc: Exception) -> bool:
         """429 / 5xx / timeout are transient; 4xx (except 429) are not."""
-        if isinstance(exc, RateLimitError):
+        if isinstance(exc, (RateLimitError, APITimeoutError)):
             return True
-        if isinstance(exc, APITimeoutError):
-            return True
-        if isinstance(exc, APIStatusError):
-            return exc.status_code in _TRANSIENT_5XX
-        return False
+        return isinstance(exc, APIStatusError) and exc.status_code in _TRANSIENT_5XX
 
     @staticmethod
     def _with_json_system_prompt(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
