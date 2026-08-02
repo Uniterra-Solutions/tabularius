@@ -41,7 +41,8 @@ starting with `## 記憶上下文`. Cost control is per-session via
   by a tracking dispatch.
 - **Timeout**: default 5 s (`RECALL_TIMEOUT`); on `APITimeoutError` the
   agent returns an empty `context_block` instead of raising, so recall
-  never blocks the conversation.
+  never blocks the conversation. A timed-out FIRST call resets the session
+  cache so its preloaded content is not lost for the next call.
 
 ## Index agent (#9)
 

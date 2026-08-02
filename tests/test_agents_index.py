@@ -73,6 +73,19 @@ class TestIndexAgent:
         assert "- `c.md` — About C" in index_content
         assert out.stats["entries"] == 3
 
+    def test_strip_related_preserves_user_content(self, memory_root, monkeypatch) -> None:
+        _stub_readers(monkeypatch)
+        # A user doc that legitimately contains "## Related" mid-content must
+        # survive reindex — only OUR trailing auto-block is replaced.
+        user_doc = "# My Doc\n\nsome content\n\n## Related\nmy own related notes\n"
+        (memory_root / "a.md").write_text(user_doc, encoding="utf-8")
+        (memory_root / "b.md").write_text("# B", encoding="utf-8")
+        client = _ScriptedClient([_FakeResponse(_FakeMessage(index_output_json()))])
+        index.run_index_agent(client=client)  # type: ignore[arg-type]
+        content = (memory_root / "a.md").read_text(encoding="utf-8")
+        assert "my own related notes" in content  # user section preserved
+        assert "- b.md" in content  # our auto block still appended
+
     def test_reindex_is_idempotent(self, memory_root, docs, monkeypatch) -> None:
         _stub_readers(monkeypatch)
         for _ in range(2):

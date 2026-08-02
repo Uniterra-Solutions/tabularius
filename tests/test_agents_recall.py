@@ -68,6 +68,27 @@ class TestRunRecallAgent:
         assert out.documents_used == []
         assert out.relevance_notes == ""
 
+    def test_first_call_timeout_does_not_lose_preload(self, memory_root, index_with_docs) -> None:
+        session = recall.RecallSession(preload_paths=["a.md"])
+
+        class _TimeoutClient:
+            def chat(self, messages, tools=None, timeout=None):
+                raise _timeout_error()
+
+        out = recall.run_recall_agent(
+            "q",
+            session=session,
+            client=_TimeoutClient(),  # type: ignore[arg-type]
+            timeout=recall.RECALL_TIMEOUT,
+        )
+        assert out.context_block == ""
+        # A timed-out FIRST call must not leave a.md marked loaded: the next
+        # call re-preloads it so its content is actually usable.
+        client = _ScriptedClient([_FakeResponse(_FakeMessage(recall_output_json()))])
+        recall.run_recall_agent("q2", session=session, client=client)  # type: ignore[arg-type]
+        second_user = client.messages_seen[0][1]["content"]
+        assert "content a" in second_user
+
     def test_no_index_returns_model_output(self, memory_root) -> None:
         client = _ScriptedClient(
             [_FakeResponse(_FakeMessage(recall_output_json(context_block="")))]

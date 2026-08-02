@@ -112,10 +112,19 @@ def _format_index_user(readers: list[ReaderAgentOutput]) -> str:
 
 
 def _strip_related(content: str) -> str:
-    """Remove the trailing ``## Related`` section (always appended last)."""
+    """Remove OUR trailing ``## Related`` block (appended last by reindex).
+
+    Only strips when the LAST ``## Related`` occurrence is followed by
+    exactly the auto-generated shape (blank lines + ``- `` bullets), so a
+    document that legitimately contains ``## Related`` mid-content is
+    never truncated.
+    """
     marker = "## Related"
-    index = content.find(marker)
+    index = content.rfind(marker)
     if index == -1:
+        return content
+    tail = content[index + len(marker) :]
+    if any(line.strip() and not line.strip().startswith("- ") for line in tail.splitlines()):
         return content
     return content[:index].rstrip() + "\n"
 

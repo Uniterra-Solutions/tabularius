@@ -64,6 +64,11 @@ class RecallSession:
     def mark_read(self, path: str) -> None:
         self._prefetched.add(path)
 
+    def reset(self) -> None:
+        """Forget everything loaded (used to retry a failed first call)."""
+        self._prefetched.clear()
+        self._initialized = False
+
 
 def run_recall_agent(
     query: str,
@@ -80,6 +85,7 @@ def run_recall_agent(
     """
     session = session or RecallSession()
     entries = _index_entries()
+    was_initialized = session.initialized
 
     preloaded: list[tuple[str, str]] = []
     if not session.initialized:
@@ -112,6 +118,10 @@ def run_recall_agent(
             timeout=timeout,
         )
     except APITimeoutError:
+        # A timed-out FIRST call never delivered its preloaded content; reset
+        # the session so the next call re-preloads instead of skipping it.
+        if not was_initialized:
+            session.reset()
         return RecallAgentOutput(context_block="", documents_used=[], relevance_notes="")
 
 
