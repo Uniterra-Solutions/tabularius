@@ -18,19 +18,10 @@ from typing import Any, Callable
 from fabricium.state import _get_global_hermes_home
 
 from tabularius.llm import LLMClient
-from tabularius.schemas import IndexEntry, ReaderAgentOutput
+from tabularius.schemas import IndexEntry
 
 MEMORY_DIR_NAME = "memory"
 INDEX_FILE = "INDEX.md"
-
-READER_SYSTEM_PROMPT = (
-    "You are the Tabularius reader agent. Read the memory document below and "
-    "return JSON with:\n"
-    '- "path": the document path,\n'
-    '- "summary": a concise 2-3 sentence summary in the document\'s language,\n'
-    '- "key_topics": 3-6 short topic strings,\n'
-    '- "category_hint": a suggested category filename stem (lowercase-hyphens).\n'
-)
 
 
 class ToolError(ValueError):
@@ -153,28 +144,17 @@ def index_update(entries: list[dict[str, Any]]) -> str:
 def spawn_reader(path: str, *, client: LLMClient | None = None) -> str:
     """Spawn a reader agent for a single memory document.
 
-    Returns ``ReaderAgentOutput`` JSON (summary + key_topics +
-    category_hint). Used by the index agent to keep its own context
-    small while summarizing every document.
+    Delegates to ``agents.reader.run_reader``; returns ``ReaderAgentOutput``
+    JSON on success or an explicit error JSON. Used by the index agent to
+    keep its own context small while summarizing every document.
     """
+    # Lazy import to avoid a module-level cycle (agent_loop imports tools).
+    from tabularius.agents.reader import run_reader
+
     try:
-        target = _resolve_path(path)
+        output = run_reader(path, client=client)
     except ToolError as exc:
         return _err(str(exc))
-    if not target.is_file():
-        return _err(f"file not found: {path}")
-    content = target.read_text(encoding="utf-8")
-
-    # Lazy import to avoid a module-level cycle (agent_loop imports tools).
-    from tabularius.agent_loop import run_agent
-
-    output = run_agent(
-        READER_SYSTEM_PROMPT,
-        f"Path: {path}\n\n{content}",
-        [],
-        ReaderAgentOutput,
-        client=client,
-    )
     return output.model_dump_json()
 
 

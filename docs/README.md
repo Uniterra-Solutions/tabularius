@@ -13,9 +13,12 @@ conversation memory as markdown.
 | [tech-stack.md](tech-stack.md) | Version table, runtime deps rationale, external services |
 | [testing.md](testing.md) | Test commands, fixture patterns, mock policy |
 | [modules/overview.md](modules/overview.md) | Per-module deep dives index |
+| [modules/agents.md](modules/agents.md) | Agent roles: memory / recall / index / reader |
 
 ## Status
 
 Phase 1 (foundation) implemented: repo scaffold, `llm.py`, `schemas.py`,
-`tools.py`, `agent_loop.py`. Phase 2+ (agents, MemoryProvider integration,
-CLI) are tracked as GitHub issues.
+`tools.py`, `agent_loop.py`. Phase 2 (agent roles, issues #7–#9)
+implemented in `agents/` with versioned prompts in `prompts/`. Remaining:
+MemoryProvider integration (issues #10–#11), CLI (issue #12), tests
+(issue #13), docs (issue #14).

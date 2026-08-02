@@ -9,7 +9,7 @@ reader) runs on this loop with its own system prompt and tool set.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -21,6 +21,8 @@ MAX_SCHEMA_RETRIES = 2
 MAX_TOOL_ROUNDS = 25
 
 DispatchFn = Callable[[str, dict[str, Any]], str]
+
+T = TypeVar("T", bound=BaseModel)
 
 
 def _default_dispatch(name: str, args: dict[str, Any]) -> str:
@@ -35,14 +37,14 @@ def run_agent(
     system: str,
     user: str,
     tools: list[dict[str, Any]],
-    schema: type[BaseModel],
+    schema: type[T],
     *,
     client: LLMClient | None = None,
     dispatch: DispatchFn | None = None,
     timeout: float | None = None,
     max_schema_retries: int = MAX_SCHEMA_RETRIES,
     max_tool_rounds: int = MAX_TOOL_ROUNDS,
-) -> BaseModel:
+) -> T:
     """Run the tool-calling loop until the model returns schema-valid JSON.
 
     - messages = [system, user]
@@ -88,7 +90,7 @@ def run_agent(
 
         content = message.content or ""
         try:
-            return parse_or_retry(content, schema)
+            return cast(T, parse_or_retry(content, schema))
         except SchemaParseError as exc:
             if schema_failures >= max_schema_retries:
                 raise

@@ -10,10 +10,13 @@ loop with its own system prompt, tool set, and output schema.
 
 | Symbol | Signature | Notes |
 |--------|-----------|-------|
-| `run_agent(system, user, tools, schema, *, client=None, dispatch=None, timeout=None, max_schema_retries=2, max_tool_rounds=25)` | `-> BaseModel` | The loop |
+| `run_agent(system, user, tools, schema, *, client=None, dispatch=None, timeout=None, max_schema_retries=2, max_tool_rounds=25)` | `-> T` (schema-bound) | The loop; returns an instance of `schema` |
 | `MAX_SCHEMA_RETRIES` | `int` | `2` |
 | `MAX_TOOL_ROUNDS` | `int` | `25` |
 | `_default_dispatch(name, args)` | `(str, dict) -> str` | Looks up `TOOL_REGISTRY` |
+
+`run_agent` is generic over the output schema (`type[T]`), so role callers
+get a typed result without casts.
 
 ## Loop Semantics
 

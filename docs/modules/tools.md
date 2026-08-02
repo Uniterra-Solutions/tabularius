@@ -53,9 +53,10 @@ string in OpenAI function-calling format.
   atomically. Returns `{"ok": true, "count": N}`.
 
 ### spawn_reader(path, *, client=None)
-- Reads the document, runs the reader agent via `run_agent` (lazy import
-  to avoid a module-level cycle), returns `ReaderAgentOutput` JSON.
-- `client` injectable for tests.
+- Thin JSON wrapper over `agents.reader.run_reader` (lazy import to avoid a
+  module-level cycle): reads the document safely, runs the reader agent via
+  `run_agent`, returns `ReaderAgentOutput` JSON.
+- `client` injectable for tests; path/missing-file failures → error JSON.
 
 ## Security
 
