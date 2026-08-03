@@ -8,6 +8,12 @@ FROM nousresearch/hermes-agent:latest
 
 # Install tabularius + its deps into the immutable venv at build time.
 # openai/pydantic/httpx are already present in the base image.
+#
+# The base image pins uv's `exclude-newer` to a build-date snapshot
+# (2026-07-20), which hides packages published after that date — fabricium
+# 0.3.0 (2026-07-28) would resolve as "only <=0.1.7 available". Override the
+# snapshot so the repo's current dependencies resolve.
+ENV UV_EXCLUDE_NEWER=2099-01-01
 RUN uv pip install --python /opt/hermes/.venv/bin/python json-repair "fabricium>=0.3.0"
 
 # Copy the repo and install the package itself (editable not needed — E2E
