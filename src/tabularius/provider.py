@@ -64,6 +64,10 @@ RECALL_TIMEOUT = 5.0
 SESSION_DRAIN_TIMEOUT = 10.0
 _WRITER_JOIN_FLOOR = 0.05
 
+# Serializes mirror read-modify-write so concurrent mirrors never lose an
+# update (see _mirror_entry).
+_MIRROR_LOCK = threading.Lock()
+
 # Built-in memory ``target`` -> mirror document name.
 MIRROR_PATHS = {"memory": "agent-notes.md", "user": "user-profile.md"}
 DEFAULT_MIRROR_PATH = "agent-notes.md"
@@ -79,11 +83,15 @@ def _format_turn(user_content: str, assistant_content: str) -> str:
 
 def _message_text(message: dict[str, Any]) -> str | None:
     """Render one OpenAI-style message as transcript text (None to skip)."""
-    content = message.get("content") or ""
-    if isinstance(content, list):  # some providers send content parts
+    content = message.get("content")
+    if isinstance(content, list):  # multimodal content parts
         content = " ".join(str(part.get("text", "")) for part in content if isinstance(part, dict))
+    elif isinstance(content, dict):  # single content object
+        content = str(content.get("text", ""))
+    elif not isinstance(content, str):
+        content = "" if content is None else str(content)
     if content.strip():
-        return str(content)
+        return content
     calls = message.get("tool_calls")
     if isinstance(calls, list) and calls:
         names = [
@@ -110,19 +118,26 @@ def format_messages(messages: list[dict[str, Any]]) -> str:
 
 
 def _mirror_entry(target: str, content: str) -> None:
-    """Append a built-in memory entry to its mirror document (deduped)."""
+    """Append a built-in memory entry to its mirror document (deduped).
+
+    The read-modify-write is serialized by ``_MIRROR_LOCK``: concurrent
+    mirrors to the same document (e.g. foreground turn + background
+    self-review writing memory at the same time) would otherwise read the
+    same current content and the last write would drop the other's update.
+    """
     path = MIRROR_PATHS.get(target, DEFAULT_MIRROR_PATH)
     bullet = "- " + content.strip().replace("\n", "\n  ") + "\n"
-    read = json.loads(memory_read(path))
-    if read.get("ok"):
-        current: str = read["content"]
-        if content.strip() in current:
-            return  # exact duplicate — matches the built-in dedupe
-        write = json.loads(memory_write(path, f"{current.rstrip()}\n{bullet}", "merge"))
-    else:
-        write = json.loads(memory_write(path, bullet, "create"))
-    if not write.get("ok"):
-        logger.debug("tabularius memory mirror write failed: %s", write.get("error"))
+    with _MIRROR_LOCK:
+        read = json.loads(memory_read(path))
+        if read.get("ok"):
+            current: str = read["content"]
+            if content.strip() in current:
+                return  # exact duplicate — matches the built-in dedupe
+            write = json.loads(memory_write(path, f"{current.rstrip()}\n{bullet}", "merge"))
+        else:
+            write = json.loads(memory_write(path, bullet, "create"))
+        if not write.get("ok"):
+            logger.debug("tabularius memory mirror write failed: %s", write.get("error"))
 
 
 # ---------------------------------------------------------------------------
@@ -347,10 +362,19 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
         ]
 
     def handle_tool_call(self, tool_name: str, args: dict[str, Any], **kwargs: Any) -> str:
+        """Dispatch an advertised tool, returning error JSON on any failure.
+
+        The model can pass malformed arguments (wrong types, unexpected
+        keys); a raising tool would break the whole turn, so every
+        exception is translated to the standard error envelope.
+        """
         tool = TOOL_REGISTRY.get(tool_name) if tool_name in PROVIDER_TOOL_NAMES else None
         if tool is None:
             return json.dumps({"ok": False, "error": f"unknown tool: {tool_name}"})
-        return tool(**args)
+        try:
+            return tool(**args)
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": f"{tool_name}: {exc}"})
 
     # -- Teardown ---------------------------------------------------------------
 

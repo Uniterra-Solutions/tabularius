@@ -33,6 +33,15 @@ class TestScanSessions:
         conn.close()
         assert sessions.scan_sessions(db) == []
 
+    def test_scan_handles_special_chars_in_db_path(self, tmp_path) -> None:
+        """'#'/'?' in the db path must not corrupt the read-only file: URI."""
+        weird = tmp_path / "dir#with?chars"
+        weird.mkdir()
+        db = weird / "state.db"
+        make_state_db(db, [("s1", 100.0, 2)], [])
+        records = sessions.scan_sessions(db)
+        assert [r.id for r in records] == ["s1"]
+
 
 class TestFindUnprocessed:
     def test_filters_committed(self, tmp_path) -> None:

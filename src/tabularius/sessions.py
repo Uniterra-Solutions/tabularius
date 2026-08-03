@@ -38,8 +38,13 @@ class SessionRecord:
 
 
 def connect_readonly(db_path: Path | str) -> sqlite3.Connection:
-    """Open the store in SQLite read-only mode (no journal/lock writes)."""
-    return sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    """Open the store in SQLite read-only mode (no journal/lock writes).
+
+    ``Path.as_uri()`` percent-encodes special characters (``?``, ``#``,
+    spaces) that would otherwise corrupt the ``file:`` URI.
+    """
+    uri = f"{Path(db_path).resolve().as_uri()}?mode=ro"
+    return sqlite3.connect(uri, uri=True)
 
 
 def _table_exists(conn: sqlite3.Connection, name: str) -> bool:

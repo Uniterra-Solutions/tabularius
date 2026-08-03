@@ -240,6 +240,35 @@ class TestMemoryMirror:
         assert provider._drain_writers("sess-1", 5.0)
         assert not (memory_root / "agent-notes.md").exists()
 
+    def test_concurrent_mirrors_do_not_lose_updates(self, memory_root, monkeypatch) -> None:
+        """Serialized read-modify-write: two concurrent mirrors both land."""
+        import tabularius.tools as tools
+
+        provider = create_provider()
+        provider.initialize("sess-1")
+
+        entered = threading.Event()
+        release = threading.Event()
+        orig_read = tools.memory_read
+
+        def slow_read(path: str) -> str:
+            entered.set()
+            assert release.wait(timeout=5)
+            return orig_read(path)
+
+        monkeypatch.setattr("tabularius.provider.memory_read", slow_read)
+
+        provider.on_memory_write("add", "memory", "first note")
+        provider.on_memory_write("add", "memory", "second note")
+        # First mirror is mid-read; the second must wait for the lock.
+        assert entered.wait(2.0)
+        release.set()
+        assert provider._drain_writers("sess-1", 5.0)
+
+        content = (memory_root / "agent-notes.md").read_text(encoding="utf-8")
+        assert "first note" in content
+        assert "second note" in content
+
 
 class TestTools:
     def test_tool_schemas_are_subset(self) -> None:
@@ -262,6 +291,13 @@ class TestTools:
         provider = create_provider()
         result = json.loads(provider.handle_tool_call("nope", {}))
         assert result["ok"] is False
+
+    def test_handle_tool_call_bad_args_returns_error_json(self, memory_root) -> None:
+        """Malformed model args must never raise — error JSON instead."""
+        provider = create_provider()
+        result = json.loads(provider.handle_tool_call("memory_read", {"path": 123}))
+        assert result["ok"] is False
+        assert "memory_read" in result["error"]
 
 
 class TestTeardown:
@@ -298,3 +334,8 @@ class TestFormatMessages:
         assert "[tool_calls: f]" in text
         assert "## tool" not in text
         assert "## assistant\ndone" in text
+
+    def test_dict_content_does_not_raise(self) -> None:
+        """A dict content (some providers) must render instead of crashing."""
+        text = format_messages([{"role": "user", "content": {"type": "text", "text": "hi"}}])
+        assert "hi" in text
