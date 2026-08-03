@@ -64,3 +64,10 @@ pre-fix code and PASS on the post-fix code:
 - `test_write_when_parent_is_file_returns_error_json`
 - `test_none_system_content_does_not_raise`
 - `test_empty_choices_raises_clear_error`
+- `test_handle_tool_call_bad_args_returns_error_json` (review: malformed
+  model args must never raise)
+- `test_scan_handles_special_chars_in_db_path` (review: `file:` URI
+  percent-encoding)
+- `test_concurrent_mirrors_do_not_lose_updates` (review: serialized mirror
+  read-modify-write)
+- `test_dict_content_does_not_raise` (review: transcript formatting)

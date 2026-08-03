@@ -31,6 +31,42 @@ uv sync --dev
 pip install -e .
 ```
 
+## Install as a Hermes memory provider
+
+Hermes discovers user memory providers as **directories** under
+`~/.hermes/plugins/<name>/` (not pip entry points). After installing the
+package into Hermes' Python environment, create a thin shim directory that
+re-exports the package:
+
+```bash
+# 1. Install the package (into the Hermes venv when using `hermes`)
+pip install tabularius
+
+# 2. Shim directory — Hermes' memory-provider discovery scans
+#    ~/.hermes/plugins/<name>/ for __init__.py + cli.py
+mkdir -p ~/.hermes/plugins/tabularius
+cat > ~/.hermes/plugins/tabularius/__init__.py <<'EOF'
+from tabularius import register  # noqa: F401
+from tabularius.provider import TabulariusMemoryProvider  # noqa: F401 (MemoryProvider marker)
+EOF
+cat > ~/.hermes/plugins/tabularius/cli.py <<'EOF'
+from tabularius.cli import register_cli, tabularius_command  # noqa: F401
+EOF
+
+# 3. Activate — the `hermes tabularius ...` CLI appears once active
+hermes config set memory.provider tabularius
+
+# 4. Migrate history (extract all unprocessed sessions, build the index,
+#    back up memory entries, switch MEMORY.md to the INDEX.md pointer)
+hermes tabularius init --force
+
+# 5. Check status
+hermes tabularius status
+```
+
+`hermes tabularius setup` performs the same activation (step 3) plus
+ensures the memory directory exists.
+
 ## Configuration
 
 | Env var | Purpose |
@@ -133,8 +169,8 @@ desktop (its PYTHONPATH shadows the project venv).
 
 ## Roadmap
 
-- `hermes memory setup` install flow polish (issue #14)
-- Test-suite hardening across real Hermes environments (issue #13)
+- Follow-up hardening from review: provider double-trigger guard, bounded
+  prefetch caches, stale queued recall (issues #15–#17)
 
 ## License
 

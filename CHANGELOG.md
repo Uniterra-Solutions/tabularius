@@ -31,9 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   history in batches of 5, backs up memory entries to
   `memory/archive/pre-init-<ts>.json`, and switches MEMORY.md to the
   INDEX.md pointer while keeping USER.md).
-- Test suite grown to 134 tests (provider concurrency, state persistence,
-  state.db scanning, CLI dry-run/force flows) + pre-commit gates
-  (black / ruff / mypy) + GitHub Actions CI workflow.
+- Test suite grown to 138 tests (provider concurrency, state persistence,
+  state.db scanning, CLI dry-run/force flows, review evidence tests) +
+  pre-commit gates (black / ruff / mypy) + GitHub Actions CI workflow.
+
+### Changed
+
+- Simplified phase-3 internals: shared `_drain_workers` join loop (was
+  duplicated in `_drain_writers` / `_drain_all_writers`), shared
+  `_recall_context` (was duplicated in `prefetch` / `queue_prefetch`),
+  and a shared `make_state_db` test fixture.
 
 ### Fixed
 
@@ -42,3 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Index: `## Related` stripping only removes the auto-generated trailing
   block; documents that legitimately contain the text mid-content are
   preserved.
+- Provider: `handle_tool_call` no longer raises on malformed model args
+  (wrong types / extra keys) — every exception becomes the standard error
+  JSON, matching the tools-never-raise contract.
+- Sessions: the read-only `state.db` `file:` URI is now percent-encoded —
+  paths containing `#` / `?` previously opened the wrong store.
+- Provider: concurrent memory mirrors (e.g. foreground turn + background
+  self-review) are serialized so an update is never lost.
+- Provider: transcript formatting handles dict message content instead of
+  crashing.
