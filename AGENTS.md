@@ -32,7 +32,7 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Language**: Python ≥ 3.10 (target 3.10 floor)
 - **Package manager**: `uv` — lockfile at `uv.lock`
 - **Build system**: hatchling (`pyproject.toml`, src layout)
-- **Testing**: pytest ≥ 8 (61 tests, `tests/` directory)
+- **Testing**: pytest ≥ 8 (76 tests, `tests/` directory)
 - **Lint/Format**: ruff ≥ 0.8 (rules E, F, I, N, W; line-length 100)
 - **Type check**: mypy ≥ 1.16 (`--strict` mode on `src/tabularius`)
 - **Runtime deps**: openai, pydantic ≥ 2, httpx, json-repair, fabricium
@@ -42,7 +42,8 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 | Directory | Responsibility |
 |---|---|
 | `src/tabularius/` | Core library: LLM client, output schemas, tools, agent loop |
-| `src/tabularius/agents/` | Agent roles (memory / recall / index / reader) — later phases |
+| `src/tabularius/prompts/` | Versioned system prompts per role (`prompts.py` loader) |
+| `src/tabularius/agents/` | Agent roles: memory / recall / index / reader (phase 2) — see `docs/modules/agents.md` |
 | `tests/` | Unit tests — real temp dirs, no network |
 | `docs/` | Architecture, conventions, testing guides — not task instructions |
 
