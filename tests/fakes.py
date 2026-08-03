@@ -7,8 +7,30 @@ inserts ``tests/`` on ``sys.path`` and ``from fakes import ...`` works.
 from __future__ import annotations
 
 import json
+import sqlite3
 from types import SimpleNamespace
 from typing import Any
+
+
+def make_state_db(path, session_rows, message_rows) -> None:
+    """Create a Hermes-shaped state.db fixture (sessions + messages)."""
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL, message_count INTEGER)"
+    )
+    conn.execute(
+        "CREATE TABLE messages ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT,"
+        " content TEXT, timestamp REAL)"
+    )
+    for row in session_rows:
+        conn.execute("INSERT INTO sessions (id, started_at, message_count) VALUES (?,?,?)", row)
+    for row in message_rows:
+        conn.execute(
+            "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?,?,?,?)", row
+        )
+    conn.commit()
+    conn.close()
 
 
 class _FakeMessage:

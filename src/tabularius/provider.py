@@ -171,7 +171,6 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
     def __init__(self, client: LLMClient | None = None) -> None:
         self._client = client
         self._session_id = ""
-        self._hermes_home: str | None = None
         self._shutting_down = False
 
         # Serializes session state snapshots (prevents lost turns).
@@ -204,7 +203,8 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
             return False
 
     def initialize(self, session_id: str, **kwargs: Any) -> None:
-        self._hermes_home = kwargs.get("hermes_home")
+        # The hermes_home kwarg is deliberately ignored: every path resolves
+        # through fabricium's global home (tools.memory_dir / state.state_path).
         self._session_id = str(session_id or "")
         _set_last_active(self)
 
@@ -292,11 +292,7 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
         if cached is not None:
             return cached
         try:
-            session = self._recall_sessions.setdefault(sid, RecallSession())
-            output = run_recall_agent(
-                query, session=session, client=self._client, timeout=RECALL_TIMEOUT
-            )
-            return output.context_block
+            return self._recall_context(sid, query)
         except Exception as exc:
             logger.debug("tabularius prefetch failed: %s", exc)
             return ""
@@ -307,18 +303,23 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
 
         def _recall() -> None:
             try:
-                session = self._recall_sessions.setdefault(sid, RecallSession())
-                output = run_recall_agent(
-                    query, session=session, client=self._client, timeout=RECALL_TIMEOUT
-                )
+                context = self._recall_context(sid, query)
             except Exception as exc:
                 logger.debug("tabularius queued prefetch failed: %s", exc)
                 return
             with self._prefetch_lock:
                 if not self._shutting_down:
-                    self._prefetch_results[sid] = output.context_block
+                    self._prefetch_results[sid] = context
 
         self._spawn_writer(sid, _recall, "tabularius-prefetch")
+
+    def _recall_context(self, sid: str, query: str) -> str:
+        """Run the recall agent for ``sid`` and return its context block."""
+        session = self._recall_sessions.setdefault(sid, RecallSession())
+        output = run_recall_agent(
+            query, session=session, client=self._client, timeout=RECALL_TIMEOUT
+        )
+        return output.context_block
 
     # -- Built-in memory mirror -----------------------------------------------
 
@@ -393,44 +394,43 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
         Returns True if all drained; a False return (still alive) makes the
         caller skip instead of hang.
         """
-        if not sid:
-            return True
-        deadline = time.monotonic() + timeout
-        while True:
+
+        def _workers() -> list[threading.Thread]:
             with self._inflight_lock:
-                workers = [t for t in self._inflight_writers.get(sid, ()) if t.is_alive()]
-            if not workers:
-                return True
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return False
-            for t in workers:
-                slice_left = deadline - time.monotonic()
-                if slice_left <= 0:
-                    break
-                t.join(timeout=min(slice_left, _WRITER_JOIN_FLOOR))
+                return list(self._inflight_writers.get(sid, ()))
+
+        return _drain_workers(_workers, timeout)
 
     def _drain_all_writers(self, timeout: float) -> bool:
         """Join every in-flight writer across all sessions within ``timeout``."""
-        deadline = time.monotonic() + timeout
-        while True:
+
+        def _workers() -> list[threading.Thread]:
             with self._inflight_lock:
-                workers = [
-                    t
-                    for workers in self._inflight_writers.values()
-                    for t in workers
-                    if t.is_alive()
-                ]
-            if not workers:
-                return True
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return False
-            for t in workers:
-                slice_left = deadline - time.monotonic()
-                if slice_left <= 0:
-                    break
-                t.join(timeout=min(slice_left, _WRITER_JOIN_FLOOR))
+                return [t for workers in self._inflight_writers.values() for t in workers]
+
+        return _drain_workers(_workers, timeout)
+
+
+def _drain_workers(get_workers: Callable[[], list[threading.Thread]], timeout: float) -> bool:
+    """Join live workers from ``get_workers`` within ``timeout``.
+
+    Re-fetches the worker list each loop because finished writers remove
+    themselves asynchronously. Returns True if all drained; False (still
+    alive) makes the caller skip instead of hang.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        workers = [t for t in get_workers() if t.is_alive()]
+        if not workers:
+            return True
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        for t in workers:
+            slice_left = deadline - time.monotonic()
+            if slice_left <= 0:
+                break
+            t.join(timeout=min(slice_left, _WRITER_JOIN_FLOOR))
 
 
 def create_provider(client: LLMClient | None = None) -> TabulariusMemoryProvider:

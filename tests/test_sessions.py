@@ -4,33 +4,15 @@ from __future__ import annotations
 
 import sqlite3
 
+from fakes import make_state_db
+
 from tabularius import sessions
-
-
-def _make_db(path, session_rows, message_rows) -> None:
-    conn = sqlite3.connect(path)
-    conn.execute(
-        "CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL, message_count INTEGER)"
-    )
-    conn.execute(
-        "CREATE TABLE messages ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT,"
-        " content TEXT, timestamp REAL)"
-    )
-    for row in session_rows:
-        conn.execute("INSERT INTO sessions (id, started_at, message_count) VALUES (?,?,?)", row)
-    for row in message_rows:
-        conn.execute(
-            "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?,?,?,?)", row
-        )
-    conn.commit()
-    conn.close()
 
 
 class TestScanSessions:
     def test_scans_oldest_first(self, tmp_path) -> None:
         db = tmp_path / "state.db"
-        _make_db(
+        make_state_db(
             db,
             [("s1", 100.0, 2), ("s2", 50.0, 5), ("s3", 200.0, 0)],
             [],
@@ -55,7 +37,7 @@ class TestScanSessions:
 class TestFindUnprocessed:
     def test_filters_committed(self, tmp_path) -> None:
         db = tmp_path / "state.db"
-        _make_db(db, [("s1", 100.0, 2), ("s2", 50.0, 5)], [])
+        make_state_db(db, [("s1", 100.0, 2), ("s2", 50.0, 5)], [])
         assert [r.id for r in sessions.find_unprocessed(db, {"s1": "ts"})] == ["s2"]
         assert [r.id for r in sessions.find_unprocessed(db, ["s1", "s2"])] == []
         assert [r.id for r in sessions.find_unprocessed(db, set())] == ["s2", "s1"]
@@ -64,7 +46,7 @@ class TestFindUnprocessed:
 class TestLoadTranscript:
     def test_renders_messages_in_order(self, tmp_path) -> None:
         db = tmp_path / "state.db"
-        _make_db(
+        make_state_db(
             db,
             [("s1", 100.0, 2)],
             [

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import sqlite3
 import subprocess
 from types import SimpleNamespace
 
 import pytest
-from fakes import _FakeMessage, _FakeResponse, _ScriptedClient
+from fakes import _FakeMessage, _FakeResponse, _ScriptedClient, make_state_db
 
 from tabularius import cli
 from tabularius import state as tabularius_state
@@ -23,29 +22,9 @@ _CREATE_OUTPUT = json.dumps(
 )
 
 
-def _make_db(path, session_rows, message_rows) -> None:
-    conn = sqlite3.connect(path)
-    conn.execute(
-        "CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL, message_count INTEGER)"
-    )
-    conn.execute(
-        "CREATE TABLE messages ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT,"
-        " content TEXT, timestamp REAL)"
-    )
-    for row in session_rows:
-        conn.execute("INSERT INTO sessions (id, started_at, message_count) VALUES (?,?,?)", row)
-    for row in message_rows:
-        conn.execute(
-            "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?,?,?,?)", row
-        )
-    conn.commit()
-    conn.close()
-
-
 def _db_with_two_sessions(memory_root) -> str:
     db = memory_root.parent / "state.db"
-    _make_db(
+    make_state_db(
         db,
         [("sess-a", 100.0, 2), ("sess-b", 200.0, 2)],
         [
@@ -227,7 +206,7 @@ class TestInitForce:
         (memories / "MEMORY.md").write_text("old\n", encoding="utf-8")
 
         db = memory_root.parent / "state.db"
-        _make_db(db, [], [])
+        make_state_db(db, [], [])
         monkeypatch.setattr("tabularius.cli.run_index_agent", lambda **kw: None)
         args = SimpleNamespace(tabularius_command="init", force=True, db=str(db))
 
