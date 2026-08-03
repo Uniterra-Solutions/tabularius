@@ -1,0 +1,16 @@
+# Keep the build context small and hermetic — the derived test image only
+# needs the installable package (src/, pyproject.toml).
+.git
+.venv
+__pycache__
+*.pyc
+tests
+docs
+stubs
+Dockerfile.test
+.dockerignore
+uv.lock
+CHANGELOG.md
+LICENSE
+README.md
+AGENTS.md

@@ -1,0 +1,19 @@
+# Dockerfile.test — derived image for tabularius E2E testing.
+#
+# Base: official hermes-agent image (immutable /opt/hermes at runtime).
+# Tabularius and its missing runtime deps (json-repair, fabricium) are
+# installed at BUILD time, when the layer is root-writable. Runtime never
+# pip-installs — see docs/testing.md and the hermes-plugin-testing skill.
+FROM nousresearch/hermes-agent:latest
+
+# Install tabularius + its deps into the immutable venv at build time.
+# openai/pydantic/httpx are already present in the base image.
+RUN uv pip install --python /opt/hermes/.venv/bin/python json-repair "fabricium>=0.3.0"
+
+# Copy the repo and install the package itself (editable not needed — E2E
+# exercises the installed package exactly as `pip install tabularius` would).
+COPY . /src/tabularius
+RUN uv pip install --python /opt/hermes/.venv/bin/python /src/tabularius
+
+# Sanity: the import must resolve inside the venv.
+RUN /opt/hermes/.venv/bin/python -c "import tabularius, fabricium, json_repair; print('deps ok')"
