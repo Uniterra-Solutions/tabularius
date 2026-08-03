@@ -6,8 +6,11 @@
 # Install dev deps (once)
 uv sync --dev
 
-# Full test suite
+# Full test suite (unit + Docker E2E; e2e skips without docker)
 uv run pytest tests/ -q
+
+# Just the Docker E2E layer (tests/e2e/)
+uv run pytest tests/e2e/ -q
 
 # Single test file
 uv run pytest tests/test_tools.py -q
@@ -32,7 +35,7 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Language**: Python ≥ 3.10 (target 3.10 floor)
 - **Package manager**: `uv` — lockfile at `uv.lock`
 - **Build system**: hatchling (`pyproject.toml`, src layout)
-- **Testing**: pytest ≥ 8 (138 tests, `tests/` directory)
+- **Testing**: pytest ≥ 8 (151 tests: 138 unit + 13 Docker E2E, `tests/` directory)
 - **Lint/Format**: ruff ≥ 0.8 (rules E, F, I, N, W; line-length 100)
 - **Type check**: mypy ≥ 1.16 (`--strict` mode on `src/tabularius`)
 - **Runtime deps**: openai, pydantic ≥ 2, httpx, json-repair, fabricium
@@ -46,6 +49,8 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 | `src/tabularius/agents/` | Agent roles: memory / recall / index / reader (phase 2) — see `docs/modules/agents.md` |
 | `src/tabularius/` (phase 3) | `provider.py` MemoryProvider + concurrency, `state.py` state.json, `sessions.py` state.db scan, `cli.py` init/reindex/status — see `docs/modules/provider.md` |
 | `tests/` | Unit tests — real temp dirs, no network |
+| `tests/e2e/` | Docker E2E — plugin inside `nousresearch/hermes-agent` (see `docs/testing.md`); skipped without docker |
+| `Dockerfile.test` | Derived test image (build-time deps; `/opt/hermes` immutable at runtime) |
 | `docs/` | Architecture, conventions, testing guides — not task instructions |
 
 ## Key Constraints

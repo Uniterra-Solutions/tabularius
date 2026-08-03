@@ -39,7 +39,14 @@ tabularius/
 │   ├── test_provider.py   # Provider: session end, concurrency, mirror, tools
 │   ├── test_state.py      # tabularius_state.json read/write (real tmp)
 │   ├── test_sessions.py   # state.db scanning (schema tolerant)
-│   └── test_cli.py        # status / setup / init --dry-run / init --force / reindex
+│   ├── test_cli.py        # status / setup / init --dry-run / init --force / reindex
+│   └── e2e/               # Docker E2E (L1 install, L2 CLI, L3 lifecycle, L4 extraction)
+│       ├── conftest.py    # Image build + temp HERMES_HOME + run_hermes helper
+│       ├── test_install.py    # Provider discovery, CLI wiring
+│       ├── test_cli.py        # status/setup/init dry-run offline
+│       ├── test_provider.py   # availability + chat never crashes
+│       └── test_extraction.py # init --force full pipeline (needs API key)
+├── Dockerfile.test        # Derived hermes-agent image for E2E (build-time deps)
 └── docs/
     ├── README.md          # Docs index
     ├── architecture.md    # System context, data flow, decisions
@@ -68,3 +75,5 @@ tabularius/
 | `tests/conftest.py` | Hermes PYTHONPATH fix; `memory_root` tmp-dir fixture |
 | `tests/fakes.py` | Shared scripted-LLM fakes (messages + tools recording) |
 | `tests/test_*.py` | One file per source module, mirroring names |
+| `tests/e2e/` | Docker E2E suite (L1–L4) — see `docs/testing.md` |
+| `Dockerfile.test` | Derived `nousresearch/hermes-agent` image for E2E (build-time `uv pip install` of json-repair / fabricium / tabularius) |

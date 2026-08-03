@@ -23,6 +23,11 @@ implemented in `agents/` with versioned prompts in `prompts/`. Phase 3
 (issues #10–#12) implemented + reviewed: `provider.py` MemoryProvider +
 concurrency, `state.py` state.json, `sessions.py` state.db scan, `cli.py`
 status/setup/update/init/reindex; review findings fixed with evidence
-tests (138 tests, ruff + mypy + CI green). Remaining: follow-up hardening
+tests (151 tests, ruff + mypy + CI green). Remaining: follow-up hardening
 issues #15–#17 (provider double-trigger guard, bounded prefetch caches,
 stale queued recall).
+
+Docker E2E (issues #18, `tests/e2e/`): verifies the plugin inside the real
+`nousresearch/hermes-agent` container — provider discovery, CLI wiring,
+and full extraction (`init --force`) — driven by `Dockerfile.test` + a
+session-scoped image fixture. Level 4 requires `TABULARIUS_API_KEY`.

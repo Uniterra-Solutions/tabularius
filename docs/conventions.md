@@ -84,6 +84,12 @@ Rules:
   (`_ScriptedClient`, `_FakeOpenAI`).
 - Evidence-test naming: a test for a specific bug is named after it
   (`test_nul_byte_path_returns_error_json`).
+- Docker E2E lives in `tests/e2e/` (levels documented in `docs/testing.md`).
+  The suite must skip cleanly when docker or the base hermes-agent image is
+  missing — never fail a local `uv run pytest tests/` on machines without
+  Docker. Real-LLM tests (Level 4) must be gated on `TABULARIUS_API_KEY`.
+- E2E assertions check side effects and exit codes, never exact LLM output
+  (non-deterministic).
 
 ## How to Update
 

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] — 2026-08-04
 
 ### Added
 
@@ -31,9 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   history in batches of 5, backs up memory entries to
   `memory/archive/pre-init-<ts>.json`, and switches MEMORY.md to the
   INDEX.md pointer while keeping USER.md).
-- Test suite grown to 138 tests (provider concurrency, state persistence,
-  state.db scanning, CLI dry-run/force flows, review evidence tests) +
-  pre-commit gates (black / ruff / mypy) + GitHub Actions CI workflow.
+- Docker E2E suite (issue #18, `tests/e2e/`): verifies the plugin inside
+  the real `nousresearch/hermes-agent` container — provider discovery
+  (`hermes memory status`), CLI wiring, offline `status`/`setup`/`init`
+  dry-run, provider availability + `chat -q` non-crash, and full
+  `init --force` extraction (Level 4, gated on `TABULARIUS_API_KEY`).
+  Driven by `Dockerfile.test` (build-time deps — `/opt/hermes` is immutable
+  at runtime) + a session-scoped image fixture in `tests/e2e/conftest.py`.
+- Test suite grown to 151 tests (138 unit + 13 Docker E2E) +
+  pre-commit gates (black / ruff / mypy) + GitHub Actions CI (unit matrix
+  + Docker E2E job).
 
 ### Changed
 

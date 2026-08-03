@@ -32,7 +32,10 @@
 |---------|----------|----------|
 | Uniterra relay | `https://api.uniterra-solutions.com/v1` | All LLM calls (`deepseek-v4-flash`) |
 
-No other external services. Unit tests make zero network calls.
+No other external services. Unit tests make zero network calls. The Docker
+E2E suite (`tests/e2e/`) additionally depends on Docker + the
+`nousresearch/hermes-agent:latest` image (pulled at build time via
+`Dockerfile.test`); it is skipped automatically when either is missing.
 
 ## Config Surface
 
