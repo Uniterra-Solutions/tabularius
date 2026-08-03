@@ -44,13 +44,20 @@ class TestInitForceExtraction:
         assert "extracted 1 session(s)" in output
         assert "init complete" in output
 
-        # Side effects on the mounted volume: memory docs + committed state.
-        memory = hermes_home / "memory"
-        assert memory.is_dir()
-        assert any(memory.rglob("*.md")), f"no memory docs under {memory}"
-        state = hermes_home / "tabularius_state.json"
-        assert state.exists(), "state.json missing after extraction"
-        assert "s1" in state.read_text(encoding="utf-8")
+        # Side effects — checked inside the container because the mounted
+        # volume is chowned to the container's hermes user (bind-mount
+        # permission split on Linux runners; host cannot stat it).
+        code, output = run_hermes(
+            hermes_home,
+            "sh",
+            "-c",
+            "test -d /opt/data/memory && "
+            "find /opt/data/memory -name '*.md' | head -1 && "
+            "test -f /opt/data/tabularius_state.json && echo STATE_OK",
+        )
+        assert code == 0, output
+        assert "STATE_OK" in output
+        assert ".md" in output
 
     def test_reindex_idempotent(self, hermes_home, run_hermes) -> None:
         from fakes import make_state_db

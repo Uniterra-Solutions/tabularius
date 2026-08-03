@@ -51,8 +51,14 @@ class TestSetup:
         code, output = run_hermes(hermes_home, "hermes", "tabularius", "setup")
         assert code == 0, output
         assert "Memory directory:" in output
-        # The memory dir must exist on the mounted volume after setup.
-        assert (hermes_home / "memory").is_dir()
+        # Check inside the container: the setup step chowns the mounted
+        # volume to the container's hermes user, so the host process can no
+        # longer stat it (bind-mount permission split on Linux runners).
+        code, output = run_hermes(
+            hermes_home, "sh", "-c", "test -d /opt/data/memory && echo MEMORY_OK"
+        )
+        assert code == 0, output
+        assert "MEMORY_OK" in output
 
 
 class TestInitDryRun:
