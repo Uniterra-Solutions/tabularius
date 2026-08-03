@@ -57,7 +57,9 @@ uv run pytest tests/e2e/ -q        # just the Docker layer
 - `Dockerfile.test` — derived image: `FROM nousresearch/hermes-agent:latest`
   + build-time `uv pip install` of `json-repair`, `fabricium`, and the repo
   package. **Never pip-install at runtime** — `/opt/hermes` is immutable in
-  the published image.
+  the published image. The image pins uv's `exclude-newer` to its build
+  date, hiding newer PyPI releases; `ENV UV_EXCLUDE_NEWER=2099-01-01`
+  restores current resolution (fabricium 0.3.0 was invisible until this).
 - `tests/e2e/conftest.py` — session-scoped image build, per-test temp
   HERMES_HOME (plugin shim + `memory.provider: tabularius` config), and a
   `run_hermes` helper that mounts the home at `/opt/data` and runs a command.
@@ -81,6 +83,13 @@ uv run pytest tests/e2e/ -q        # just the Docker layer
   pre-write that in the mounted HERMES_HOME (no need to run `config set`).
 - `chat -q` without an inference provider exits 1 with a Hermes-level
   message; the assertion is *no plugin traceback*, not a specific string.
+- **Bind-mount permission split (Linux CI).** The container chowns the
+  mounted `/opt/data` volume to its `hermes` user (UID 10000) during
+  startup. On Linux runners the host process can no longer stat those paths
+  afterwards (`PermissionError`), so assert filesystem side effects by
+  re-entering the container (`run_hermes(home, "sh", "-c", "...")`), not by
+  reading the mount from the host. macOS Docker Desktop's uid mapping masks
+  this locally — CI exposes it.
 
 **Environment:** the `e2e_image` fixture `pytest.skip`s the suite when
 docker is missing or the base hermes-agent image isn't pulled locally, so
