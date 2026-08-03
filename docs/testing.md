@@ -25,10 +25,14 @@ PYTHONPATH shadows the project venv.
 | `test_llm.py` | API key resolution order; JSON suffix injection; transient retry (429/5xx/timeout/4xx) |
 | `test_tools.py` | Each tool on a real tmp dir; merge semantics; traversal rejection; atomic writes |
 | `test_agent_loop.py` | No-tool direct JSON; two-round tool flow; schema retry; dispatch errors; round limit |
-| `test_agents_memory.py` | Issue #7: transcript batch → output; merge preserves old content; prompt versioned |
-| `test_agents_recall.py` | Issue #8: first-call preload; cache prevents re-read; timeout → empty context |
-| `test_agents_index.py` | Issue #9: INDEX.md + Related blocks; gap fill; reindex idempotent |
-| `test_agents_reader.py` | Issue #9: doc → summary; missing/traversal → `ToolError` |
+|| `test_agents_memory.py` | Issue #7: transcript batch → output; merge preserves old content; prompt versioned |
+|| `test_agents_recall.py` | Issue #8: first-call preload; cache prevents re-read; timeout → empty context |
+|| `test_agents_index.py` | Issue #9: INDEX.md + Related blocks; gap fill; reindex idempotent |
+|| `test_agents_reader.py` | Issue #9: doc → summary; missing/traversal → `ToolError` |
+|| `test_provider.py` | Issue #10: session-end extraction (non-blocking, idempotent), concurrent sync_turn, prefetch/queue_prefetch, memory mirror, tool surface, shutdown/atexit |
+|| `test_state.py` | Issue #11: state.json roundtrip, corrupt fallback, committed/extraction/reindex records, legacy archive |
+|| `test_sessions.py` | Issue #12: state.db scan oldest-first, unprocessed diff, transcript render, schema tolerance |
+|| `test_cli.py` | Issues #11–#12: parser, status output, setup activation, init dry-run + force migration, reindex, backup/clear helpers |
 
 Agent tests share scripted-LLM fakes in `tests/fakes.py` (duck-typed
 `LLMClient` recording messages + tools; per-schema JSON builders).

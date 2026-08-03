@@ -1,0 +1,5 @@
+name: tabularius
+version: 0.1.0
+description: "Tabularius — document-based conversation memory: extract, index, and recall sessions as markdown files."
+hooks:
+  - on_session_end

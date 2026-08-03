@@ -44,6 +44,7 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 | `src/tabularius/` | Core library: LLM client, output schemas, tools, agent loop |
 | `src/tabularius/prompts/` | Versioned system prompts per role (`prompts.py` loader) |
 | `src/tabularius/agents/` | Agent roles: memory / recall / index / reader (phase 2) — see `docs/modules/agents.md` |
+| `src/tabularius/` (phase 3) | `provider.py` MemoryProvider + concurrency, `state.py` state.json, `sessions.py` state.db scan, `cli.py` init/reindex/status — see `docs/modules/provider.md` |
 | `tests/` | Unit tests — real temp dirs, no network |
 | `docs/` | Architecture, conventions, testing guides — not task instructions |
 

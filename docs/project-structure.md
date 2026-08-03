@@ -8,8 +8,12 @@ tabularius/
 ├── pyproject.toml         # hatchling, deps, ruff/mypy/pytest config
 ├── uv.lock                # Locked dependency graph
 ├── src/tabularius/
-│   ├── __init__.py        # Package metadata (__version__)
-│   ├── cli.py             # CLI entry points (init / reindex) — later phase
+│   ├── __init__.py        # register(ctx) → MemoryProvider (Hermes plugin entry)
+│   ├── plugin.yaml        # Hermes plugin manifest (name: tabularius)
+│   ├── provider.py        # MemoryProvider: on_session_end / prefetch / mirror
+│   ├── state.py           # tabularius_state.json (committed_sessions, stats)
+│   ├── sessions.py        # state.db scanning (read-only, schema tolerant)
+│   ├── cli.py             # hermes tabularius status/setup/update/init/reindex
 │   ├── llm.py             # OpenAI SDK wrapper → uniterra relay + retry
 │   ├── schemas.py         # Pydantic output contracts + parse_or_retry
 │   ├── tools.py           # Hand-written memory tools (JSON-string contract)
@@ -22,6 +26,8 @@ tabularius/
 │       ├── recall.py      # Query → context block (session cache, timeout)
 │       ├── index.py       # INDEX.md + ## Related blocks (idempotent)
 │       └── reader.py      # Document → summary + topics
+├── stubs/
+│   └── agent/memory_provider.pyi  # Mypy stub for the Hermes-only ABC
 ├── tests/
 │   ├── conftest.py        # sys.path fix + memory_root fixture
 │   ├── fakes.py           # Shared scripted-LLM fakes for agent tests
@@ -29,7 +35,11 @@ tabularius/
 │   ├── test_schemas.py    # Model contracts + parse_or_retry
 │   ├── test_tools.py      # Tools: real tmp dirs, merge, traversal
 │   ├── test_agent_loop.py # Loop flows: tools, retry, dispatch
-│   └── test_agents_*.py   # memory / recall / index / reader roles
+│   ├── test_agents_*.py   # memory / recall / index / reader roles
+│   ├── test_provider.py   # Provider: session end, concurrency, mirror, tools
+│   ├── test_state.py      # tabularius_state.json read/write (real tmp)
+│   ├── test_sessions.py   # state.db scanning (schema tolerant)
+│   └── test_cli.py        # status / setup / init --dry-run / init --force / reindex
 └── docs/
     ├── README.md          # Docs index
     ├── architecture.md    # System context, data flow, decisions
@@ -50,12 +60,11 @@ tabularius/
 | `src/tabularius/agent_loop.py` | `run_agent`: tool-calling loop, schema retry, dispatch (generic over output schema) |
 | `src/tabularius/prompts.py` | `load_prompt` + `PROMPTS_DIR` — versioned role prompts |
 | `src/tabularius/agents/` | memory / recall / index / reader roles on `run_agent` (issues #7–#9) |
+| `src/tabularius/provider.py` | `TabulariusMemoryProvider` (issues #10): daemon extraction, prefetch, memory mirror, drain + atexit |
+| `src/tabularius/state.py` | `tabularius_state.json` (issues #11): committed_sessions / last_reindex / extraction_stats |
+| `src/tabularius/sessions.py` | state.db read-only scanning + transcript rendering (issue #12) |
+| `src/tabularius/cli.py` | `hermes tabularius status/setup/update/init/reindex` (issues #11–#12) |
+| `src/tabularius/plugin.yaml` | Hermes plugin manifest (memory-provider discovery) |
 | `tests/conftest.py` | Hermes PYTHONPATH fix; `memory_root` tmp-dir fixture |
 | `tests/fakes.py` | Shared scripted-LLM fakes (messages + tools recording) |
 | `tests/test_*.py` | One file per source module, mirroring names |
-
-## Placeholders (later phases)
-
-- `cli.py` — `init` / `reindex` (phase 3, issue #12)
-- `__init__.py` — will grow `register(ctx)` for MemoryProvider (phase 3,
-  issues #10–#11)

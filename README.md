@@ -10,11 +10,11 @@ back into prompts before each LLM call.
 ## Status
 
 - **Implemented**: phase-1 execution layer (LLM client, output schemas,
-  memory tools, generic agent loop) and phase-2 agent roles (memory /
-  recall / index / reader).
-- **Upcoming**: MemoryProvider integration (`on_session_end` /
-  `prefetch`), `tabularius init` / `reindex` CLI commands, and the
-  `hermes memory setup` install flow (tracked as GitHub issues #10–#12).
+  memory tools, generic agent loop), phase-2 agent roles (memory / recall /
+  index / reader), and phase-3 Hermes integration: the `MemoryProvider`
+  (`on_session_end` real-time extraction, `prefetch` recall, memory
+  mirror), profile-safe state, and the `tabularius init` / `reindex` /
+  `status` CLI (issues #10–#12).
 
 ## Requirements
 
@@ -90,6 +90,12 @@ set + a Pydantic output schema, running on `run_agent()` — see
 
 ```
 src/tabularius/
+├── __init__.py     # register(ctx) → MemoryProvider (Hermes plugin entry)
+├── plugin.yaml     # Hermes plugin manifest
+├── provider.py     # MemoryProvider: on_session_end / prefetch / mirror
+├── state.py        # tabularius_state.json (committed_sessions, stats)
+├── sessions.py     # state.db scanning (read-only, schema tolerant)
+├── cli.py          # hermes tabularius status/setup/update/init/reindex
 ├── llm.py          # OpenAI SDK wrapper → uniterra relay + retry
 ├── schemas.py      # Pydantic output contracts + parse_or_retry
 ├── tools.py        # Memory-dir tools (JSON-string contract)
@@ -99,6 +105,19 @@ src/tabularius/
 └── agents/         # Agent roles: memory / recall / index / reader
 tests/              # Unit tests — real temp dirs, no network
 docs/               # Architecture, conventions, module guides
+```
+
+## CLI
+
+As a Hermes memory provider, the CLI is discovered when
+`memory.provider: tabularius` is active (`hermes memory setup`, or
+`hermes config set memory.provider tabularius`):
+
+```bash
+hermes tabularius status          # provider + extraction state
+hermes tabularius init            # dry run: report unprocessed sessions
+hermes tabularius init --force    # migrate: extract all + index + switch MEMORY.md
+hermes tabularius reindex         # rebuild INDEX.md + Related only
 ```
 
 ## Development
@@ -114,9 +133,8 @@ desktop (its PYTHONPATH shadows the project venv).
 
 ## Roadmap
 
-- MemoryProvider integration (`on_session_end` / `prefetch`, issues #10–#11)
-- `tabularius init` / `tabularius reindex` CLI (issue #12)
-- `hermes memory setup` install flow (issue #14)
+- `hermes memory setup` install flow polish (issue #14)
+- Test-suite hardening across real Hermes environments (issue #13)
 
 ## License
 

@@ -26,8 +26,9 @@ Execution layer (phase 1)
 ```
 
 Phase 1 delivers the execution layer; the agent roles in `agents/` (phase
-2, issues #7–#9) run on top of these primitives. The MemoryProvider
-integration and CLI are later phases.
+2, issues #7–#9) run on top of these primitives. Phase 3 (issues #10–#12)
+adds the MemoryProvider integration (`provider.py`), profile-safe state
+(`state.py`), and the CLI (`cli.py`, `sessions.py`).
 
 ## Module Responsibilities
 
@@ -39,6 +40,10 @@ integration and CLI are later phases.
 | `prompts.py` | `load_prompt(name)` + `PROMPTS_DIR` — versioned system prompts (`prompts/*.md`) for every agent role |
 | `agents/` | Role implementations: `memory.py` (extract→merge-write), `recall.py` (query→context block, session cache), `index.py` (INDEX.md + Related), `reader.py` (doc→summary). All run on `run_agent` |
 | `agent_loop.py` | `run_agent()` drives an LLM through JSON + optional tool calls until it returns schema-valid JSON. Tool dispatch via `TOOL_REGISTRY` (role-configurable); schema violations retry with corrective feedback |
+| `provider.py` | `TabulariusMemoryProvider` (issue #10): `on_session_end` → daemon extraction, `prefetch`/`queue_prefetch` → recall context, `on_memory_write` → mirror (add only), `shutdown`/atexit → drain. Concurrency: daemon writer tracking, atomic snapshots, idempotent commits |
+| `state.py` | `tabularius_state.json` (issue #11): `committed_sessions` (cross-process idempotency), `last_reindex`, `extraction_stats`. Profile-safe via fabricium `_get_global_hermes_home()` |
+| `sessions.py` | state.db scanning (issue #12): read-only, schema tolerant; `find_unprocessed` merges committed + legacy archive |
+| `cli.py` | `hermes tabularius status/setup/update/init/reindex` (issues #11–#12) via the memory-plugin `register_cli` convention |
 
 ## Data Flow
 
@@ -76,6 +81,36 @@ sorted doc scan (excludes INDEX.md) → run_reader(path) per doc → ReaderAgent
 Reindex is idempotent: sorted scan + stable rendering + atomic replace.
 ```
 
+### Provider path (issue #10)
+
+```
+on_session_end(messages) → snapshot (lock) → daemon thread
+  → idempotency check (committed_sessions) → run_memory_agent([transcript])
+  → memory_write per doc (atomic) → record_extraction (state.json)
+prefetch(query) → recall agent (5s timeout, empty on failure) → context block
+on_memory_write(action=="add") → mirror to agent-notes.md / user-profile.md
+shutdown / atexit → _drain_writers (timeout-bounded, never hangs)
+```
+
+Concurrency safety (OpenViking lessons): a daemon writer thread tracked in
+`_inflight_writers` keyed by session id; `_session_state_lock` makes
+session snapshots atomic so concurrent `sync_turn` calls never lose a
+turn; commits are idempotent and persisted cross-process in
+`tabularius_state.json` (a Hermes restart never re-extracts); atexit drains
+in-flight writers as a safety net.
+
+### Init / reindex path (issues #11–#12)
+
+```
+tabularius init (dry-run default) → scan state.db (read-only, tolerant)
+  → diff against committed_sessions (+ legacy archive) → report
+tabularius init --force → backup MEMORY.md/USER.md → archive/pre-init-<ts>.json
+  → batches of 5 → memory agent → merge-write .md → record commits
+  → index agent (INDEX.md + Related) → record_reindex
+  → clear MEMORY.md (→ INDEX.md pointer), USER.md untouched
+tabularius reindex → index agent only (idempotent)
+```
+
 ## Key Decisions
 
 1. **Own agent loop, not Hermes agents.** Each role is a prompt + tool set
@@ -99,3 +134,18 @@ Reindex is idempotent: sorted scan + stable rendering + atomic replace.
    classification + relatedness and keeps the rest (sorted scan,
    strip-and-append of `## Related`, INDEX.md rendering) deterministic, so
    reindex is idempotent.
+7. **Extraction is real-time and non-blocking.** `on_session_end` spawns a
+   daemon thread; it never blocks the session teardown, and it never waits
+   for a batch (`tabularius init` handles history). Idempotency is
+   cross-process: `committed_sessions` lives in `tabularius_state.json`,
+   so a Hermes restart does not re-extract (issue #10).
+8. **CLI follows the memory-provider convention.** `cli.py` exposes
+   `register_cli(subparser)` + `tabularius_command`, discovered by Hermes
+   only when `memory.provider: tabularius` is active. `setup/status/update`
+   reuse fabricium's `HermesPlugin` lifecycle; `init/reindex` are the batch
+   commands (issues #11–#12).
+9. **state.db is scanned read-only and schema-tolerantly.** `tabularius
+   init` never opens the Hermes session store for writing; missing
+   tables/columns degrade to empty results, and the legacy
+   `archive/processed-sessions.json` record is merged so already-processed
+   sessions are not re-extracted (issue #12).

@@ -19,7 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timeout), index agent (INDEX.md + per-document `## Related` blocks,
   idempotent reindex), and reader agent (document → summary + topics).
 - Versioned system prompts (`prompts/*.md`, loaded via `prompts.py`).
-- Test suite (76 tests, real temp dirs, no network) + pre-commit gates
+- Phase-3 Hermes integration (issues #10–#12): `provider.py`
+  (`TabulariusMemoryProvider` — real-time daemon extraction on
+  `on_session_end`, recall `prefetch`/`queue_prefetch` with timeout, built-in
+  memory mirror on `on_memory_write` (add only), concurrency safety via
+  daemon writer tracking + atomic snapshots + cross-process idempotent
+  commits + atexit drain), `state.py` (`tabularius_state.json` —
+  committed_sessions / last_reindex / extraction_stats), `sessions.py`
+  (read-only schema-tolerant state.db scanning), and `cli.py` (`hermes
+  tabularius status/setup/update/init/reindex`; `init --force` migrates
+  history in batches of 5, backs up memory entries to
+  `memory/archive/pre-init-<ts>.json`, and switches MEMORY.md to the
+  INDEX.md pointer while keeping USER.md).
+- Test suite grown to 134 tests (provider concurrency, state persistence,
+  state.db scanning, CLI dry-run/force flows) + pre-commit gates
   (black / ruff / mypy) + GitHub Actions CI workflow.
 
 ### Fixed

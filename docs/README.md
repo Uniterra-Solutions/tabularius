@@ -19,6 +19,8 @@ conversation memory as markdown.
 
 Phase 1 (foundation) implemented: repo scaffold, `llm.py`, `schemas.py`,
 `tools.py`, `agent_loop.py`. Phase 2 (agent roles, issues #7–#9)
-implemented in `agents/` with versioned prompts in `prompts/`. Remaining:
-MemoryProvider integration (issues #10–#11), CLI (issue #12), tests
-(issue #13), docs (issue #14).
+implemented in `agents/` with versioned prompts in `prompts/`. Phase 3
+(issues #10–#12) implemented: `provider.py` MemoryProvider + concurrency,
+`state.py` state.json, `sessions.py` state.db scan, `cli.py`
+status/setup/update/init/reindex. Remaining: test suite hardening
+(issue #13), docs polish (issue #14).
