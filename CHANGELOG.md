@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-08-04
+
+### Added
+
+- Tag-triggered release workflow (`.github/workflows/release.yml`): pushing a
+  `v<version>` tag runs tests, publishes to PyPI via **trusted publishing**
+  (OIDC — no API tokens in repo or secrets), and creates the GitHub Release
+  from `CHANGELOG.md`. `workflow_dispatch` with a `tag` input provides a
+  manual recovery path — see `docs/release.md`.
+- `docs/release.md`: end-to-end release process (pipeline jobs, PyPI trusted
+  publisher setup, release steps, manual re-trigger).
+
+### Fixed
+
+- Release workflow: GitHub Release creation is idempotent — re-running for a
+  tag that already has a release skips instead of failing with
+  `HTTP 422: Release.tag_name already exists`.
+
 ## [0.1.0] — 2026-08-04
 
 ### Added

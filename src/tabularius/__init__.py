@@ -16,7 +16,7 @@ from tabularius.provider import (
     create_provider,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def register(ctx: Any) -> None:
