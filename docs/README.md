@@ -12,6 +12,7 @@ conversation memory as markdown.
 | [project-structure.md](project-structure.md) | Directory tree, responsibility table |
 | [tech-stack.md](tech-stack.md) | Version table, runtime deps rationale, external services |
 | [testing.md](testing.md) | Test commands, fixture patterns, mock policy |
+| [release.md](release.md) | Release process: tag → PyPI trusted publishing → GitHub Release |
 | [modules/overview.md](modules/overview.md) | Per-module deep dives index |
 | [modules/agents.md](modules/agents.md) | Agent roles: memory / recall / index / reader |
 

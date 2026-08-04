@@ -78,6 +78,11 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Stacked PRs**: phase commits build on each other; each PR targets the
   previous phase branch, top of stack targets `main`.
 - **Release tags**: `v<version>` (e.g. `v0.1.0`).
+- **Release workflow**: pushing a `v<version>` tag runs
+  `.github/workflows/release.yml` — tests → publish to PyPI (trusted
+  publishing, OIDC, no tokens) → create GitHub Release from `CHANGELOG.md`
+  (see `docs/release.md`). Manual re-trigger without deleting the tag:
+  `gh workflow run release.yml --ref main -f tag=vX.Y.Z`.
 
 ## Boundaries
 
