@@ -73,6 +73,10 @@ ensures the memory directory exists.
 |---------|---------|
 | `TABULARIUS_API_KEY` | Relay API key (preferred) |
 | `OPENAI_API_KEY` | Fallback API key |
+| `TABULARIUS_BASE_URL` | Relay base URL (default: `https://api.uniterra-solutions.com/v1`) |
+| `TABULARIUS_MODEL` | Relay model (default: `deepseek-v4-flash`) |
+| `TABULARIUS_MAX_TOKENS` | Max output tokens per LLM call (default: `2000`; auto-doubled up to `32000` when a response is truncated) |
+| `TABULARIUS_TIMEOUT` | Request timeout in seconds (default: `60.0`) |
 | `HERMES_HOME` | Hermes home override (memory dir resolves to `~/.hermes/memory/` via fabricium) |
 
 ## Quickstart

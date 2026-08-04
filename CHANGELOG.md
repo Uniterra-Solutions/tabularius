@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- LLM parameters are configurable via env vars without code changes:
+  `TABULARIUS_BASE_URL`, `TABULARIUS_MODEL`, `TABULARIUS_MAX_TOKENS`,
+  `TABULARIUS_TIMEOUT` (explicit `LLMClient` kwargs still win; unset vars
+  fall back to the existing `DEFAULT_*` constants — fully backward
+  compatible). Fixes the `init --force` crash where a small `max_tokens`
+  truncated the memory agent's merged output and schema retries failed on
+  the empty payload.
+- Truncation guard in `LLMClient.chat()`: a response with
+  `finish_reason=length` is no longer treated as success — the output
+  budget is doubled (capped at 32000) and retried up to 3 times, then a
+  clear `OutputTruncatedError` is raised instead of parsing an
+  empty/partial payload.
+
 ## [0.1.1] — 2026-08-04
 
 ### Added

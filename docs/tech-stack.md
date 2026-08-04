@@ -43,4 +43,8 @@ E2E suite (`tests/e2e/`) additionally depends on Docker + the
 |---------|---------|
 | `TABULARIUS_API_KEY` | Relay API key (preferred) |
 | `OPENAI_API_KEY` | Fallback API key |
+| `TABULARIUS_BASE_URL` | Relay base URL override (default: `https://api.uniterra-solutions.com/v1`) |
+| `TABULARIUS_MODEL` | Relay model override (default: `deepseek-v4-flash`) |
+| `TABULARIUS_MAX_TOKENS` | Max output tokens override (default: `2000`) |
+| `TABULARIUS_TIMEOUT` | Request timeout override in seconds (default: `60.0`) |
 | `HERMES_HOME` | Hermes home override (via fabricium resolution) |
