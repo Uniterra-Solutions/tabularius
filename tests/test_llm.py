@@ -1,5 +1,7 @@
 """Tests for llm.py — API key resolution, JSON constraints, retry logic."""
 
+from types import SimpleNamespace
+
 import httpx
 import pytest
 from openai import APIStatusError, APITimeoutError, RateLimitError
@@ -73,6 +75,52 @@ class TestResolveApiKey:
             llm.resolve_api_key()
 
 
+class TestEnvOverrides:
+    def test_all_env_overrides_applied(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TABULARIUS_BASE_URL", "http://localhost:9999/v1")
+        monkeypatch.setenv("TABULARIUS_MODEL", "gpt-test")
+        monkeypatch.setenv("TABULARIUS_MAX_TOKENS", "1234")
+        monkeypatch.setenv("TABULARIUS_TIMEOUT", "12.5")
+        client, _ = _make_client([{"ok": True}])
+        assert client.base_url == "http://localhost:9999/v1"
+        assert client.model == "gpt-test"
+        assert client.max_tokens == 1234
+        assert client.timeout == 12.5
+
+    def test_defaults_when_env_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        names = (
+            "TABULARIUS_BASE_URL",
+            "TABULARIUS_MODEL",
+            "TABULARIUS_MAX_TOKENS",
+            "TABULARIUS_TIMEOUT",
+        )
+        for name in names:
+            monkeypatch.delenv(name, raising=False)
+        client, _ = _make_client([{"ok": True}])
+        assert client.base_url == llm.DEFAULT_BASE_URL
+        assert client.model == llm.DEFAULT_MODEL
+        assert client.max_tokens == llm.DEFAULT_MAX_TOKENS
+        assert client.timeout == llm.DEFAULT_TIMEOUT
+
+    def test_explicit_kwargs_beat_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TABULARIUS_MODEL", "env-model")
+        monkeypatch.setenv("TABULARIUS_MAX_TOKENS", "1111")
+        fake = _FakeOpenAI([{"ok": True}])
+        client = llm.LLMClient(client=fake, api_key="k", model="explicit", max_tokens=2222)  # type: ignore[arg-type]
+        assert client.model == "explicit"
+        assert client.max_tokens == 2222
+
+    def test_invalid_max_tokens_env_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TABULARIUS_MAX_TOKENS", "not-a-number")
+        with pytest.raises(RuntimeError, match="TABULARIUS_MAX_TOKENS"):
+            _make_client([{"ok": True}])
+
+    def test_invalid_timeout_env_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("TABULARIUS_TIMEOUT", "soon")
+        with pytest.raises(RuntimeError, match="TABULARIUS_TIMEOUT"):
+            _make_client([{"ok": True}])
+
+
 class TestJsonSystemPrompt:
     def test_suffix_added_to_system(self) -> None:
         messages = [{"role": "system", "content": "Be helpful."}]
@@ -96,6 +144,50 @@ class TestJsonSystemPrompt:
         # content=None must be treated as empty, not crash the suffix append.
         out = llm.LLMClient._with_json_system_prompt([{"role": "system", "content": None}])
         assert llm.JSON_OUTPUT_SUFFIX in out[0]["content"]
+
+
+def _truncated_response() -> SimpleNamespace:
+    return SimpleNamespace(choices=[SimpleNamespace(finish_reason="length", message=None)])
+
+
+class TestTruncationGuard:
+    def test_truncation_bumps_max_tokens_and_recovers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(llm.time, "sleep", lambda _: None)
+        client, fake = _make_client([_truncated_response(), _truncated_response(), {"ok": True}])
+        result = client.chat([{"role": "user", "content": "hi"}])
+        assert result == {"ok": True}
+        assert [call["max_tokens"] for call in fake.calls] == [
+            llm.DEFAULT_MAX_TOKENS,
+            llm.DEFAULT_MAX_TOKENS * llm.TRUNCATION_GROWTH_FACTOR,
+            llm.DEFAULT_MAX_TOKENS * llm.TRUNCATION_GROWTH_FACTOR**2,
+        ]
+
+    def test_truncation_exhausts_bumps_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(llm.time, "sleep", lambda _: None)
+        client, fake = _make_client([_truncated_response()] * (llm.MAX_TRUNCATION_BUMPS + 1))
+        with pytest.raises(llm.OutputTruncatedError, match="finish_reason=length"):
+            client.chat([{"role": "user", "content": "hi"}])
+        assert len(fake.calls) == llm.MAX_TRUNCATION_BUMPS + 1
+
+    def test_truncation_error_mentions_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(llm.time, "sleep", lambda _: None)
+        client, _ = _make_client([_truncated_response()] * (llm.MAX_TRUNCATION_BUMPS + 1))
+        with pytest.raises(llm.OutputTruncatedError, match="TABULARIUS_MAX_TOKENS"):
+            client.chat([{"role": "user", "content": "hi"}])
+
+    def test_truncation_capped_at_max_output_tokens(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(llm.time, "sleep", lambda _: None)
+        fake = _FakeOpenAI([_truncated_response()])
+        client = llm.LLMClient(client=fake, api_key="k", max_tokens=llm.MAX_OUTPUT_TOKENS)  # type: ignore[arg-type]
+        with pytest.raises(llm.OutputTruncatedError):
+            client.chat([{"role": "user", "content": "hi"}])
+        assert len(fake.calls) == 1
+
+    def test_normal_response_passes_through(self) -> None:
+        client, _ = _make_client([{"ok": True}])
+        assert client.chat([{"role": "user", "content": "hi"}]) == {"ok": True}
 
 
 class TestChatRetry:
