@@ -35,7 +35,7 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Language**: Python ≥ 3.10 (target 3.10 floor)
 - **Package manager**: `uv` — lockfile at `uv.lock`
 - **Build system**: hatchling (`pyproject.toml`, src layout)
-- **Testing**: pytest ≥ 8 (151 tests: 138 unit + 13 Docker E2E, `tests/` directory)
+- **Testing**: pytest ≥ 8 (163 tests: 148 unit + 15 Docker E2E, `tests/` directory)
 - **Lint/Format**: ruff ≥ 0.8 (rules E, F, I, N, W; line-length 100)
 - **Type check**: mypy ≥ 1.16 (`--strict` mode on `src/tabularius`)
 - **Runtime deps**: openai, pydantic ≥ 2, httpx, json-repair, fabricium
@@ -67,6 +67,12 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Atomic writes only.** All memory file writes go through tmp + `os.replace`.
 - **No hardcoded secrets.** API key from `TABULARIUS_API_KEY` →
   `OPENAI_API_KEY` fallback.
+- **LLM params configurable.** `LLMClient` reads `TABULARIUS_BASE_URL` /
+  `TABULARIUS_MODEL` / `TABULARIUS_MAX_TOKENS` / `TABULARIUS_TIMEOUT`
+  (explicit kwargs win, then env, then `DEFAULT_*`).
+- **Truncation is not success.** `finish_reason=length` auto-bumps
+  `max_tokens` (doubling, capped at 32000, ≤3 bumps) then raises
+  `OutputTruncatedError` — never parse an empty/partial payload.
 - **Agent loop is hand-written** — not the Hermes agent system. Every role
   runs on `run_agent()` with its own system prompt, tool set, and output
   schema.

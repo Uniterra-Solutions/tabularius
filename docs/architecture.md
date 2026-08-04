@@ -34,7 +34,7 @@ adds the MemoryProvider integration (`provider.py`), profile-safe state
 
 | Module | Responsibility |
 |---|---|
-| `llm.py` | Resolve API key (`TABULARIUS_API_KEY` → `OPENAI_API_KEY`); wrap OpenAI chat-completions against the uniterra relay; enforce `response_format=json_object` + JSON-only system suffix; retry 429/5xx/timeout with exponential backoff |
+| `llm.py` | Resolve API key (`TABULARIUS_API_KEY` → `OPENAI_API_KEY`); wrap OpenAI chat-completions against the uniterra relay; `base_url`/`model`/`max_tokens`/`timeout` configurable via `TABULARIUS_*` env vars; enforce `response_format=json_object` + JSON-only system suffix; retry 429/5xx/timeout with exponential backoff; truncation guard (`finish_reason=length` → bump `max_tokens`, then `OutputTruncatedError`) |
 | `schemas.py` | Define every agent output contract as a Pydantic model; `parse_or_retry()` parses LLM JSON with a `json_repair` fallback and raises `SchemaParseError` on unfixable content |
 | `tools.py` | Hand-written tools over the memory directory: `memory_read`, `memory_write` (create/merge), `memory_list`, `index_update`, `spawn_reader`. All return JSON strings; path traversal rejected; writes atomic |
 | `prompts.py` | `load_prompt(name)` + `PROMPTS_DIR` — versioned system prompts (`prompts/*.md`) for every agent role |

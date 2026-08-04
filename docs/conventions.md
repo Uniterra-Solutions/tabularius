@@ -39,6 +39,9 @@
 - `SchemaParseError(ValueError)` is raised by `parse_or_retry()` when LLM
   content cannot be parsed/validated — the agent loop catches it to retry
   with corrective feedback.
+- `OutputTruncatedError(RuntimeError)` is raised by `LLMClient.chat()` when
+  `finish_reason=length` persists after the automatic `max_tokens` bumps —
+  callers must never parse an empty/partial payload as if it were success.
 - The agent loop wraps `dispatch()` in `except Exception` so a raising tool
   feeds back as error JSON to the model instead of crashing the run.
 
@@ -73,6 +76,10 @@ Rules:
   (`ValueError`), and symlink loops (`OSError`).
 - **No secrets in code.** API key from `TABULARIUS_API_KEY` →
   `OPENAI_API_KEY`; missing key raises a clear `RuntimeError`.
+- **LLM params are env-configurable.** `LLMClient` resolves `base_url` /
+  `model` / `max_tokens` / `timeout` as explicit kwargs → `TABULARIUS_*`
+  env vars → `DEFAULT_*` constants. Invalid numeric env values raise a
+  `RuntimeError` naming the variable (never silently fall back).
 - `.env` in `.gitignore` — never committed.
 
 ## Testing

@@ -24,7 +24,7 @@ implemented in `agents/` with versioned prompts in `prompts/`. Phase 3
 (issues #10–#12) implemented + reviewed: `provider.py` MemoryProvider +
 concurrency, `state.py` state.json, `sessions.py` state.db scan, `cli.py`
 status/setup/update/init/reindex; review findings fixed with evidence
-tests (151 tests, ruff + mypy + CI green). Remaining: follow-up hardening
+tests (163 tests, ruff + mypy + CI green). Remaining: follow-up hardening
 issues #15–#17 (provider double-trigger guard, bounded prefetch caches,
 stale queued recall).
 
