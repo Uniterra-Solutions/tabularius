@@ -1,6 +1,6 @@
 [project]
 name = "tabularius"
-version = "0.1.1"
+version = "0.2.0"
 description = "Tabularius — Hermes MemoryProvider plugin: extract, index, and recall conversation memory as markdown"
 requires-python = ">=3.10"
 license = { text = "MIT" }
