@@ -106,9 +106,9 @@ def tabularius_command(args: Any) -> None:
     elif sub == "update":
         cmd_update(args)
     elif sub == "init":
-        cmd_init(args)
+        sys.exit(cmd_init(args))
     elif sub == "reindex":
-        cmd_reindex(args)
+        sys.exit(cmd_reindex(args))
     else:
         print(f"Usage: hermes {PROVIDER_NAME} <status|setup|update|init|reindex>")
         sys.exit(2)
@@ -219,6 +219,7 @@ def cmd_init(
     backup_path = backup_memory_entries()
     print(f"  ✓ Backed up memory entries: {backup_path}")
 
+    had_failures = False
     for start in range(0, len(unprocessed), BATCH_SIZE):
         batch = unprocessed[start : start + BATCH_SIZE]
         transcripts = [load_transcript(db_path, record.id) for record in batch]
@@ -232,6 +233,7 @@ def cmd_init(
                 failures += 1
                 print(f"  ! write failed for {doc.path}: {write.get('error')}")
         if failures:
+            had_failures = True
             print(f"  ! batch of {len(batch)} skipped commit (write failures)")
             continue
         for record in batch:
@@ -241,6 +243,14 @@ def cmd_init(
     print("  Rebuilding index...")
     run_index_agent(client=client, reader_client=reader_client)
     record_reindex()
+
+    if had_failures:
+        print(
+            "  ⚠ init finished with write failures — unprocessed sessions "
+            "were NOT committed. Fix the memory directory and re-run "
+            "`hermes tabularius init --force`."
+        )
+        return 1
 
     cleared = clear_memory_file()
     print(f"  ✓ MEMORY.md switched to INDEX.md pointer: {cleared}")

@@ -61,7 +61,13 @@ logger = logging.getLogger(__name__)
 
 PROVIDER_NAME = "tabularius"
 RECALL_TIMEOUT = 5.0
-SESSION_DRAIN_TIMEOUT = 10.0
+# Draining in-flight writers at session end must fit inside Hermes' CLI
+# exit watchdog (HERMES_EXIT_WATCHDOG_S, default 30s): a real extraction is
+# an LLM-bound round-trip that can take 15-25s for long transcripts, and a
+# 10s drain let the daemon writer die with the interpreter — sessions were
+# silently never committed (Docker QA 2026-08). 25s leaves margin below the
+# 30s hard backstop while still completing typical extractions.
+SESSION_DRAIN_TIMEOUT = 25.0
 _WRITER_JOIN_FLOOR = 0.05
 
 # Serializes mirror read-modify-write so concurrent mirrors never lose an
@@ -288,6 +294,12 @@ class TabulariusMemoryProvider(_MemoryProviderBase):
             if failures:
                 return  # partial write — leave uncommitted so init retries
             record_extraction(session_id, output.stats)
+            logger.info(
+                "tabularius extraction committed %s (%d doc(s), %d session(s))",
+                session_id,
+                len(output.documents),
+                len(output.processed_sessions),
+            )
         except Exception as exc:
             logger.warning("tabularius extraction failed for %s: %s", session_id, exc)
 

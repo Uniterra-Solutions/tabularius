@@ -120,14 +120,29 @@ def memory_write(path: str, content: str, action: str) -> str:
 
 
 def memory_list() -> str:
-    """List INDEX.md entries (path + description) for initial filtering."""
+    """List memory documents: INDEX.md entries, or a directory scan fallback.
+
+    When INDEX.md exists, returns its parsed entries (path + description).
+    Without INDEX.md (first run before any reindex) the tool scans the
+    memory directory so the agent can discover topic files that already
+    exist (e.g. mirrored ``user-profile.md``) and choose ``merge`` instead
+    of ``create``.
+    """
     try:
         index = _resolve_path(INDEX_FILE)
     except ToolError as exc:
         return _err(str(exc))
-    if not index.is_file():
+    if index.is_file():
+        entries = _parse_index(index.read_text(encoding="utf-8"))
+        return _ok(entries=entries)
+    root = memory_dir()
+    if not root.is_dir():
         return _ok(entries=[])
-    entries = _parse_index(index.read_text(encoding="utf-8"))
+    entries = [
+        {"path": path.name, "description": ""}
+        for path in sorted(root.glob("*.md"))
+        if path.name != INDEX_FILE
+    ]
     return _ok(entries=entries)
 
 
@@ -253,7 +268,8 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "function": {
             "name": "memory_list",
             "description": (
-                "List all INDEX.md entries (path + description). "
+                "List memory documents: INDEX.md entries (path + description), "
+                "or a scan of the memory directory when INDEX.md does not exist. "
                 "Use for initial filtering before deciding which documents to read."
             ),
             "parameters": {"type": "object", "properties": {}},

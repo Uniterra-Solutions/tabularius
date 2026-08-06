@@ -17,7 +17,7 @@ from tabularius.prompts import load_prompt
 from tabularius.schemas import MemoryAgentOutput
 from tabularius.tools import TOOL_SCHEMAS
 
-MEMORY_TOOL_NAMES = ("memory_read", "memory_write")
+MEMORY_TOOL_NAMES = ("memory_read", "memory_list")
 MEMORY_TOOLS: list[dict[str, Any]] = [
     schema for schema in TOOL_SCHEMAS if schema["function"]["name"] in MEMORY_TOOL_NAMES
 ]
