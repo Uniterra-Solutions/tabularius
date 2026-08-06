@@ -23,11 +23,17 @@ class TestRunMemoryAgent:
         user = client.messages_seen[0][1]["content"]
         assert "Session 1" in user
         assert "transcript 5" in user
-        # Only memory_read / memory_write are exposed to the model.
+        # Only read-only tools are exposed to the model — the system writes.
         names = [schema["function"]["name"] for schema in client.tools_seen[0] or []]
-        assert set(names) == {"memory_read", "memory_write"}
+        assert set(names) == {"memory_read", "memory_list"}
 
-    def test_merge_preserves_old_content(self, memory_root) -> None:
+    def test_agent_reads_existing_then_emits_merge(self, memory_root) -> None:
+        """The agent must read existing content and return it in a merge doc.
+
+        Writes are performed by the system (CLI/provider), never by the
+        agent loop — so a read followed by a merge-typed document proves
+        the agent preserved the old content for the system to apply.
+        """
         (memory_root / "uniterra-vps-infra.md").write_text("# VPS\nold info\n", encoding="utf-8")
         responses = [
             _FakeResponse(
@@ -37,31 +43,29 @@ class TestRunMemoryAgent:
             ),
             _FakeResponse(
                 _FakeMessage(
-                    tool_calls=[
-                        tool_call(
-                            "memory_write",
-                            {
-                                "path": "uniterra-vps-infra.md",
-                                "content": "# VPS\nold info\nnew info\n",
-                                "action": "merge",
-                            },
-                        )
-                    ]
+                    memory_output_json(
+                        path="uniterra-vps-infra.md",
+                        content="# VPS\nold info\nnew info\n",
+                    )
                 )
             ),
-            _FakeResponse(_FakeMessage(memory_output_json())),
         ]
         client = _ScriptedClient(responses)
-        memory.run_memory_agent(["a transcript"], client=client)  # type: ignore[arg-type]
-        assert (memory_root / "uniterra-vps-infra.md").read_text(encoding="utf-8") == (
-            "# VPS\nold info\nnew info\n"
-        )
+        out = memory.run_memory_agent(["a transcript"], client=client)  # type: ignore[arg-type]
+        # The system applies this document; the agent must have included the
+        # old content in the final merged content.
+        doc = out.documents[0]
+        assert doc.action == "merge"
+        assert doc.path == "uniterra-vps-infra.md"
+        assert "old info" in doc.content
+        assert "new info" in doc.content
 
 
 class TestPrompts:
     def test_extraction_prompt_versioned_in_prompts_dir(self) -> None:
         assert (PROMPTS_DIR / "memory.md").is_file()
         prompt = load_prompt("memory")
-        assert "v1" in prompt
+        assert "v2" in prompt
         assert "memory_read" in prompt
+        assert "memory_list" in prompt
         assert "merge" in prompt

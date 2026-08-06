@@ -88,10 +88,10 @@ def tool_call(name: str, arguments: dict[str, Any], call_id: str = "call_1") -> 
     )
 
 
-def memory_output_json() -> str:
+def memory_output_json(path: str = "a.md", content: str = "# A\n", action: str = "merge") -> str:
     return json.dumps(
         {
-            "documents": [{"action": "merge", "path": "a.md", "content": "# A\n", "reason": "r"}],
+            "documents": [{"action": action, "path": path, "content": content, "reason": "r"}],
             "processed_sessions": ["s1"],
             "stats": {"docs": 1, "sessions": 1},
         }

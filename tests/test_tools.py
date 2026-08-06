@@ -111,7 +111,19 @@ class TestMemoryWrite:
 
 
 class TestMemoryList:
-    def test_no_index_returns_empty(self, memory_root) -> None:
+    def test_no_index_scans_directory(self, memory_root) -> None:
+        (memory_root / "user-profile.md").write_text("- User is Alice\n", encoding="utf-8")
+        (memory_root / "agent-notes.md").write_text("- note\n", encoding="utf-8")
+        result = _parse(tools.memory_list())
+        assert result == {
+            "ok": True,
+            "entries": [
+                {"path": "agent-notes.md", "description": ""},
+                {"path": "user-profile.md", "description": ""},
+            ],
+        }
+
+    def test_empty_dir_returns_empty(self, memory_root) -> None:
         result = _parse(tools.memory_list())
         assert result == {"ok": True, "entries": []}
 

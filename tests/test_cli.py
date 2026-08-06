@@ -218,6 +218,35 @@ class TestInitForce:
         )
         assert list((memory_root / "archive").glob("pre-init-*.json"))
 
+    def test_force_write_failure_returns_nonzero_and_no_success(
+        self, memory_root, capsys, monkeypatch
+    ) -> None:
+        """A create collision must fail loudly, not print a false success.
+
+        Regression for the Docker QA run: the memory agent wrote files via
+        the agent loop, then the CLI replayed the same documents with
+        action='create' → 'refusing to overwrite existing file', yet the
+        command still printed '✅ init complete' and exited 0.
+        """
+        # The document path already exists → create must refuse.
+        (memory_root / "a.md").write_text("existing\n", encoding="utf-8")
+
+        db = _db_with_two_sessions(memory_root)
+        client = _ScriptedClient([_FakeResponse(_FakeMessage(_CREATE_OUTPUT))])
+        monkeypatch.setattr("tabularius.cli.run_index_agent", lambda **kw: None)
+        args = SimpleNamespace(tabularius_command="init", force=True, db=db)
+
+        code = cli.cmd_init(args, client=client)  # type: ignore[arg-type]
+        out = capsys.readouterr().out
+        assert code != 0
+        assert "write failed for a.md" in out
+        assert "skipped commit (write failures)" in out
+        assert "⚠ init finished with write failures" in out
+        assert "init complete" not in out
+        # Nothing committed — the session stays unprocessed for a re-run.
+        s = tabularius_state.load_state()
+        assert set(s["committed_sessions"]) == set()
+
 
 class TestReindex:
     def test_reindex_runs_index_agent_and_stamps(self, memory_root, capsys, monkeypatch) -> None:
