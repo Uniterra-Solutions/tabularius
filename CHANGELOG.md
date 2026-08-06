@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-08-06
+
+### Changed
+
+- **Memory agent tool contract (breaking).** The memory agent no longer
+  exposes `memory_write` to the model — its tool set is read-only
+  (`memory_read` + `memory_list`), and the final `documents` list is
+  applied exactly once by the system (CLI `init` / provider
+  `on_session_end`). Previously a real LLM wrote files inside the agent
+  loop AND the system replayed the same documents, so `action="create"`
+  collided with files the agent had already written and every batch
+  commit was silently skipped (found via Docker E2E QA, 2026-08).
+
+### Fixed
+
+- **Reliable end-of-session commits.** `SESSION_DRAIN_TIMEOUT` raised from
+  10s to 25s so an LLM-bound extraction (15-25s for long transcripts)
+  finishes inside Hermes' 30s CLI exit watchdog instead of the daemon
+  writer dying with the interpreter. An INFO log now records each
+  committed extraction.
+- **`init --force` no longer reports false success.** Write failures now
+  print `⚠ init finished with write failures`, return a non-zero exit
+  code, and skip the MEMORY.md pointer switch; `tabularius_command`
+  propagates the exit code.
+- **`memory_list` discovers mirrored files before the first reindex.**
+  Without INDEX.md it scans the memory directory, so agents see files
+  created by mirrors (e.g. `user-profile.md`) and choose `merge` instead
+  of failing a `create`.
+
 ## [0.2.0] — 2026-08-05
 
 ### Added
