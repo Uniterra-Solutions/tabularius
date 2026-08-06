@@ -35,7 +35,7 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Language**: Python ≥ 3.10 (target 3.10 floor)
 - **Package manager**: `uv` — lockfile at `uv.lock`
 - **Build system**: hatchling (`pyproject.toml`, src layout)
-- **Testing**: pytest ≥ 8 (163 tests: 148 unit + 15 Docker E2E, `tests/` directory)
+- **Testing**: pytest ≥ 8 (165 tests: 150 unit + 15 Docker E2E, `tests/` directory)
 - **Lint/Format**: ruff ≥ 0.8 (rules E, F, I, N, W; line-length 100)
 - **Type check**: mypy ≥ 1.16 (`--strict` mode on `src/tabularius`)
 - **Runtime deps**: openai, pydantic ≥ 2, httpx, json-repair, fabricium
@@ -76,6 +76,11 @@ Prepend `unset PYTHONPATH` to every command if you run under the Hermes desktop
 - **Agent loop is hand-written** — not the Hermes agent system. Every role
   runs on `run_agent()` with its own system prompt, tool set, and output
   schema.
+- **Single writer for memory files.** The memory agent's tool set is
+  read-only (`memory_read` + `memory_list`) — it never writes files in the
+  agent loop. Its final `documents` list is applied exactly once by the
+  system (CLI `init` / provider `on_session_end`), so a create can never
+  collide with a file the agent already wrote.
 
 ## Git Workflow
 

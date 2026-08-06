@@ -31,6 +31,11 @@ Hermes-only ABC is stubbed for mypy in `stubs/agent/memory_provider.pyi`
   itself in `finally`.
 - **`_drain_writers(sid, timeout)`** — joins in-flight writers within a
   shared deadline; returns False (caller skips) instead of hanging.
+- **Drain timeout fits the Hermes exit watchdog** — `SESSION_DRAIN_TIMEOUT`
+  (25s) stays under Hermes' CLI `HERMES_EXIT_WATCHDOG_S` default (30s):
+  a real extraction is an LLM-bound round-trip (15-25s for long
+  transcripts), and a shorter drain let the daemon writer die with the
+  interpreter, silently skipping the commit (Docker QA 2026-08).
 - **`_session_state_lock`** — atomic snapshots of session id + buffered
   turns so concurrent `sync_turn` calls never lose a turn.
 - **Idempotent commit** — `committed_sessions` in `tabularius_state.json`

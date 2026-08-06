@@ -19,11 +19,14 @@ information into topic files (`uniterra-vps-infra.md`, `uniterra-email.md`,
 ...): new information merges into an existing topic file, and a new file is
 created only when no existing file covers the topic.
 
-**Merge semantics live in the agent, not the tool.** The prompt requires
-`memory_read` before writing; updates pass the FINAL COMPLETE merged
-content with `action="merge"`, and `action="create"` refuses to overwrite.
-The tool set exposed to the model is restricted to `memory_read` +
-`memory_write` (`MEMORY_TOOLS`).
+**Merge semantics live in the agent, not the tool.** The agent reads
+existing topic files first (`memory_read` / `memory_list`); updates pass
+the FINAL COMPLETE merged content with `action="merge"`, and
+`action="create"` refuses to overwrite. The tool set exposed to the model
+is restricted to the read-only `memory_read` + `memory_list`
+(`MEMORY_TOOLS`) — the agent never writes files directly; its `documents`
+list is applied by the system (CLI `init` / provider `on_session_end`)
+exactly as given, so a single writer owns the memory directory.
 
 ## Recall agent (#8)
 

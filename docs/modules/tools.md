@@ -44,8 +44,12 @@ string in OpenAI function-calling format.
   `{"ok": false, "error": "write failed: ..."}`.
 
 ### memory_list()
-- No INDEX.md → `{"ok": true, "entries": []}`
-- Parses the `## Categories` section: `- \`path.md\` — description`.
+- INDEX.md exists → parses the `## Categories` section:
+  `- \`path.md\` — description`.
+- No INDEX.md → scans the memory directory and lists existing `*.md`
+  files (path + empty description), so agents can discover topic files
+  created by mirrors (e.g. `user-profile.md`) before the first reindex.
+- Empty directory → `{"ok": true, "entries": []}`.
 
 ### index_update(entries)
 - Validates each entry as `IndexEntry`, renders canonical INDEX.md
